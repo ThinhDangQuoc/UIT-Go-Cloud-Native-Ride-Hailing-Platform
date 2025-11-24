@@ -4,7 +4,7 @@ services:
     image: postgres:15
     container_name: user-db
     env_file:
-      - ./user-service/.env
+      - ./modules/user-service/.env
     restart: always
     ports:
       - "5433:5432"
@@ -19,10 +19,10 @@ services:
       retries: 5
 
   user-service:
-    build: ./user-service
+    build: ./modules/user-service
     container_name: user-service
     env_file:
-      - ./user-service/.env
+      - ./modules/user-service/.env
     ports:
       - "8081:8081"
     depends_on:
@@ -42,10 +42,10 @@ services:
       - uitgo-net
 
   driver-service:
-    build: ./driver-service
+    build: ./modules/driver-service
     container_name: driver-service
     env_file:
-      - ./driver-service/.env
+      - ./modules/driver-service/.env
     ports:
       - "8082:8082"
     depends_on:
@@ -59,7 +59,7 @@ services:
     image: postgres:15
     container_name: trip-db
     env_file:
-      - ./trip-service/.env
+      - ./modules/trip-service/.env
     restart: always
     ports:
       - "5435:5432"
@@ -74,10 +74,10 @@ services:
       retries: 5
 
   trip-service:
-    build: ./trip-service
+    build: ./modules/trip-service
     container_name: trip-service
     env_file:
-      - ./trip-service/.env
+      - ./modules/trip-service/.env
     ports:
       - "8083:8083"
     depends_on:
