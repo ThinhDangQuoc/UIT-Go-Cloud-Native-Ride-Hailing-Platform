@@ -17,8 +17,8 @@ app.use(express.json());
 // Đăng ký các route của module Trip (các endpoint bắt đầu bằng /api)
 app.use("/api", tripRoutes);
 
-// Lấy cổng từ biến môi trường, mặc định 4002 nếu chưa được cấu hình
-const PORT = process.env.PORT || 4002;
+// Lấy cổng từ biến môi trường, mặc định 8083 nếu chưa được cấu hình
+const PORT = process.env.PORT || 8083;
 
 // Khởi động server và đảm bảo rằng bảng "trips" trong cơ sở dữ liệu đã sẵn sàng
 app.listen(PORT, async () => {

@@ -1,0 +1,24 @@
+{
+  "name": "api-gateway",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "API Gateway for UIT-Go microservices with SQS integration",
+  "main": "src/app.js",
+  "scripts": {
+    "start": "node src/app.js",
+    "dev": "nodemon src/app.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "bcryptjs": "^2.4.3",
+    "jsonwebtoken": "^9.0.2",
+    "body-parser": "^1.20.2",
+    "axios": "^1.7.2",
+    "@aws-sdk/client-sqs": "^3.500.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  }
+}

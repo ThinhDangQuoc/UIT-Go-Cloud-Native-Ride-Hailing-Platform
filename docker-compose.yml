@@ -90,6 +90,27 @@ services:
     networks:
       - uitgo-net
 
+  # ===========================
+  #        API GATEWAY
+  # ===========================
+  api-gateway:
+    build: ./modules/api-gateway
+    container_name: api-gateway
+    env_file:
+      - ./modules/api-gateway/.env
+    ports:
+      - "8080:8080"
+    depends_on:
+      user-service:
+        condition: service_started
+      driver-service:
+        condition: service_started
+      trip-service:
+        condition: service_started
+    networks:
+      - uitgo-net
+    restart: always
+
 # --- NETWORKS & VOLUMES ---
 networks:
   uitgo-net:

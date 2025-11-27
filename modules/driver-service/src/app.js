@@ -1,8 +1,6 @@
 import express from "express";
 import http from "http";
 import { Server } from "socket.io";
-import http from "http";
-import { Server } from "socket.io";
 import cors from "cors";
 import dotenv from "dotenv";
 import driverRoutes from "./routes/driverRoutes.js";
@@ -17,7 +15,7 @@ app.use(express.json());
 // Đăng ký các route của DriverService
 app.use("/api", driverRoutes);
 
-const PORT = process.env.PORT;
+const PORT = process.env.PORT || 8082;
 const server = http.createServer(app);
 
 // ✅ Khởi tạo Socket.IO
@@ -59,7 +57,7 @@ async function checkRedisConnection() {
 }
 
 // Khởi động server sau khi Redis sẵn sàng
-app.listen(PORT, async () => {
+server.listen(PORT, async () => {
   await checkRedisConnection();
   console.log(`🚗DriverService running on port ${PORT}`);
 });

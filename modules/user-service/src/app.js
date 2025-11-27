@@ -18,6 +18,11 @@ app.use(express.json());
 // Đăng ký route cho API — mọi endpoint sẽ bắt đầu bằng /api
 app.use("/api", userRoutes);
 
+app.use((req, res, next) => {
+  console.log(`[UserService] ${req.method} ${req.url} - body:`, req.body);
+  next();
+});
+
 // ====================== SERVER CONFIG ======================
 
 // Lấy port từ biến môi trường, mặc định 4000 nếu không có

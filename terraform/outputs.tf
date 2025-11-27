@@ -14,3 +14,23 @@ output "db_endpoint" {
   value     = module.rds.db_endpoint
   sensitive = true
 }
+
+output "sqs_queue_url" {
+  value = module.sqs.queue_url
+}
+
+output "sqs_queue_arn" {
+  value = module.sqs.queue_arn
+}
+
+output "api_gateway_endpoint" {
+  value = module.api_gateway.api_endpoint
+}
+
+output "api_gateway_id" {
+  value = module.api_gateway.api_id
+}
+
+output "lambda_function_arn" {
+  value = module.lambda_sqs_consumer.lambda_function_arn
+}
