@@ -8,6 +8,7 @@
     "start": "node src/app.js"
   },
   "dependencies": {
+    "@aws-sdk/client-sqs": "^3.682.0",
     "axios": "^1.13.1",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",

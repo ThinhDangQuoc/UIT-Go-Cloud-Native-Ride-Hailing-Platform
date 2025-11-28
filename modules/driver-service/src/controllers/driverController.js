@@ -1,42 +1,115 @@
 import axios from "axios";
 import redis, { KEYS } from "../utils/redis.js";
+import locationService from "../services/locationService.js";
+import { publishToHistoryQueue } from "../utils/sqsLocationClient.js";
 
 const TRIP_SERVICE_URL = process.env.TRIP_SERVICE_URL;
 
-//Cập nhật vị trí hiện tại của tài xế trong Redis thông qua GEO API.
+/**
+ * Cập nhật vị trí hiện tại của tài xế
+ * Hỗ trợ cả single update và batch update (mỗi 2-3 giây)
+ * 
+ * Single: PUT /drivers/:id/location { lat, lng, heading?, speed?, accuracy?, tripId? }
+ * Batch:  PUT /drivers/:id/location { locations: [{ lat, lng, heading, speed, accuracy, tripId, timestamp }] }
+ */
 export async function updateLocation(req, res) {
   const { id } = req.params;
-  const { lat, lng } = req.body;
+  const { lat, lng, heading, speed, accuracy, tripId, locations } = req.body;
 
   // Xác thực quyền truy cập: chỉ tài xế có ID trùng với token mới được phép cập nhật
   if (req.user.role !== 'driver' || req.user.id != id) {
     return res.status(403).json({ message: 'Unauthorized' });
   }
 
-  if (!lat || !lng) {
-    return res.status(400).json({ message: 'Missing location coordinates' });
-  }
-
   try {
-    // Lưu vị trí tài xế vào Redis bằng cấu trúc GEO (geoadd)
-    await redis.geoadd(KEYS.DRIVERS_LOCATIONS, lng, lat, id);
-    res.json({ message: 'Location updated' });
+    // Batch update mode (client-side batching)
+    if (locations && Array.isArray(locations)) {
+      const batchData = locations.map(loc => ({
+        driverId: id,
+        lat: loc.lat,
+        lng: loc.lng,
+        heading: loc.heading,
+        speed: loc.speed,
+        accuracy: loc.accuracy,
+        tripId: loc.tripId
+      }));
+
+      const result = await locationService.batchUpdateLocations(batchData);
+      
+      // Publish last location to history queue (async)
+      const lastLoc = locations[locations.length - 1];
+      publishToHistoryQueue({
+        driverId: id,
+        lat: lastLoc.lat,
+        lng: lastLoc.lng,
+        heading: lastLoc.heading,
+        speed: lastLoc.speed,
+        accuracy: lastLoc.accuracy,
+        tripId: lastLoc.tripId
+      }).catch(err => console.error('History queue publish error:', err));
+
+      return res.json({ 
+        message: 'Batch location updated',
+        count: result.count,
+        timestamp: result.timestamp
+      });
+    }
+
+    // Single update mode
+    if (!lat || !lng) {
+      return res.status(400).json({ message: 'Missing location coordinates' });
+    }
+
+    const result = await locationService.updateDriverLocation(id, {
+      lat,
+      lng,
+      heading,
+      speed,
+      accuracy,
+      tripId
+    });
+
+    // Check if update was skipped due to delta threshold
+    if (result.skipped) {
+      return res.json({ 
+        message: 'Location update skipped (delta threshold not met)',
+        reason: result.reason
+      });
+    }
+
+    // Publish to history queue (async, non-blocking)
+    publishToHistoryQueue({
+      driverId: id,
+      lat,
+      lng,
+      heading,
+      speed,
+      accuracy,
+      tripId
+    }).catch(err => console.error('History queue publish error:', err));
+
+    res.json({ 
+      message: 'Location updated',
+      timestamp: result.timestamp
+    });
   } catch (error) {
     console.error('Update location error:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 }
 
-//Lấy vị trí hiện tại của một tài xế dựa trên ID.
+//Lấy vị trí hiện tại của một tài xế dựa trên ID (với full metadata).
 export async function getLocation(req, res) {
   const { id } = req.params;
 
   try {
-    const position = await redis.geopos(KEYS.DRIVERS_LOCATIONS, id);
-    if (!position[0]) {
+    const location = await locationService.getDriverLocation(id);
+    
+    if (!location) {
       return res.status(404).json({ message: 'Driver location not found' });
     }
-    res.json({ lat: position[0][1], lng: position[0][0] });
+    
+    res.json(location);
   } catch (error) {
     console.error('Get location error:', error);
     res.status(500).json({ message: 'Internal server error' });
@@ -45,31 +118,25 @@ export async function getLocation(req, res) {
 
 //Tìm kiếm các tài xế gần một vị trí nhất định trong bán kính cho trước.
 export async function searchNearbyDrivers(req, res) {
-  const { lat, lng, radius = 5 } = req.query; // Mặc định bán kính 5 km
+  const { lat, lng, radius = 5, limit = 20 } = req.query;
 
   if (!lat || !lng) {
     return res.status(400).json({ message: 'Missing location coordinates' });
   }
 
   try {
-    // Truy vấn các tài xế trong phạm vi bán kính bằng Redis GEO
-    const nearby = await redis.georadius(
-      KEYS.DRIVERS_LOCATIONS,
-      lng,
-      lat,
-      radius,
-      'km',
-      'WITHCOORD'
+    const drivers = await locationService.findNearbyDrivers(
+      parseFloat(lat),
+      parseFloat(lng),
+      parseFloat(radius),
+      parseInt(limit)
     );
 
-    // Chuẩn hóa dữ liệu đầu ra
-    const drivers = nearby.map(([id, [long, lati]]) => ({
-      id,
-      lat: lati,
-      lng: long,
-    }));
-
-    res.json(drivers);
+    res.json({
+      count: drivers.length,
+      radius: parseFloat(radius),
+      drivers
+    });
   } catch (error) {
     console.error('Search drivers error:', error);
     res.status(500).json({ message: 'Internal server error' });
@@ -167,8 +234,8 @@ export async function updateStatus(req, res) {
     return res.status(403).json({ message: 'Unauthorized' });
   }
 
-  if (!['online', 'offline'].includes(status)) {
-    return res.status(400).json({ message: 'Invalid status' });
+  if (!['online', 'offline', 'on_trip'].includes(status)) {
+    return res.status(400).json({ message: 'Invalid status. Must be: online, offline, or on_trip' });
   }
 
   try {
@@ -177,12 +244,25 @@ export async function updateStatus(req, res) {
 
     // Nếu offline, xóa khỏi danh sách vị trí
     if (status === 'offline') {
-      await redis.zrem(KEYS.DRIVERS_LOCATIONS, id);
+      await locationService.removeDriverLocation(id);
     }
 
     res.json({ message: `Status updated to ${status}` });
   } catch (error) {
     console.error('Update status error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+}
+
+/**
+ * Lấy thống kê location service (for monitoring)
+ */
+export async function getLocationStats(req, res) {
+  try {
+    const stats = await locationService.getLocationStats();
+    res.json(stats);
+  } catch (error) {
+    console.error('Get stats error:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 }
