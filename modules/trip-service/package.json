@@ -9,6 +9,8 @@
     "dev": "nodemon src/app.js"
   },
   "dependencies": {
+    "@aws-sdk/client-sqs": "^3.496.0",
+    "@smithy/node-http-handler": "^4.4.5",
     "axios": "^1.13.1",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",

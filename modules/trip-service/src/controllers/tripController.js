@@ -1,61 +1,50 @@
-import axios from "axios";
-import { createTrip, getTripById, updateTripStatus, assignDriver, updateTripReview } from "../models/tripModel.js";
-import { findNearestDriver } from "../services/driverAPI.js";
+import { createTripWithOutbox, createTrip, getTripById, updateTripStatus, assignDriver, updateTripReview } from "../models/tripModel.js";
 import { TRIP_STATUS } from "../utils/constants.js";
 
 // Hàm tạo chuyến đi mới
 export async function createTripHandler(req, res) {
   try {
-    const { passengerId, pickup, destination, pickupLat, pickupLng } = req.body;
+    console.log("➡️ [TripService] Incoming request body:", req.body);
+    console.log("➡️ [TripService] Incoming headers:", req.headers);
 
-    // Lấy token từ header Authorization
-    const token = req.headers.authorization?.split(" ")[1];
+    const { pickup, destination, pickupLat, pickupLng } = req.body;
 
-    // Tạo giá tiền (từ 50.000 đến 100.000)
-    const fare = Math.floor(Math.random() * 50 + 50) * 1000;
+    // 1. Validation cơ bản
+    if (!pickup || !destination) {
+      return res.status(400).json({ message: "Pickup and destination are required" });
+    }
 
-    // Tạo bản ghi chuyến đi trong cơ sở dữ liệu
-    const trip = await createTrip(passengerId, pickup, destination, fare, TRIP_STATUS.SEARCHING);
+    // 2. Lấy User ID (Passenger ID)
+    // Ưu tiên lấy từ Header (x-user-id) do API Gateway hoặc Auth Middleware truyền vào
+    // Fallback: lấy từ body nếu test nhanh (nhưng production nên dùng header/token)
+    const passengerId = req.headers["x-user-id"] || req.body.passengerId;
 
-    // Tìm tài xế gần vị trí đón (bán kính 5km)
-    const nearbyDrivers = await findNearestDriver(pickupLat, pickupLng, 5, token);
-    if (!nearbyDrivers.length)
-      // Nếu không có tài xế nào, trả về thông báo
-      return res.status(201).json({ message: "Trip created but no drivers nearby", trip });
+    if (!passengerId) {
+      return res.status(400).json({ message: "Missing passengerId (check headers 'x-user-id')" });
+    }
 
-    // Lấy tài xế gần nhất
-    const nearestDriver = nearbyDrivers[0];
-    const driverId = nearestDriver.id;
-
-    // Gửi yêu cầu thông báo đến dịch vụ driver-service
-    await axios.post(
-      `${process.env.DRIVER_SERVICE_URL}/drivers/${driverId}/notify`,
-      { tripId: trip.id },
-      {
-        headers: {
-          Authorization: req.headers.authorization, // Truyền lại token từ client
-        },
-      }
-    );
-
-    // Thiết lập bộ đếm thời gian 15 giây để chờ tài xế phản hồi
-    setTimeout(async () => {
-      const currentTrip = await getTripById(trip.id);
-      if (currentTrip.status === TRIP_STATUS.SEARCHING) {
-        console.log(`Driver ${driverId} did not respond in time.`);
-        // Có thể mở rộng logic để tìm tài xế khác
-      }
-    }, 15000);
-
-    // Trả về phản hồi thành công cho client
-    res.status(201).json({
-      message: "Trip created and driver notified",
-      trip,
-      notifiedDriver: driverId,
+    // 5. Gọi Model: Truyền THAM SỐ RỜI (Positional Arguments) thay vì Object
+    // Thứ tự: (passengerId, pickup, destination, fare, status, driverId)
+    const trip = await createTripWithOutbox({
+      passengerId: passengerId,
+      pickup, destination, pickupLat, pickupLng,
+      fare: 50000,
+      status: TRIP_STATUS.SEARCHING
     });
+
+    // 7. Trả về kết quả cho Client
+    return res.status(201).json({
+      message: "Trip created",
+      tripId: trip.id,
+      status: trip.status
+    });
+
   } catch (err) {
-    console.error("❌createTripHandler error:", err);
-    res.status(500).json({ message: err.message });
+    console.error("❌ [TripService] Create Trip Error:", err);
+    return res.status(500).json({ 
+      message: "Internal server error", 
+      error: err.message 
+    });
   }
 }
 

@@ -32,6 +32,24 @@ services:
       - uitgo-net
 
   # --- DRIVER SERVICE ---
+  # driver-db:
+  #   image: postgres:15
+  #   container_name: driver-db
+  #   env_file:
+  #     - ./modules/driver-service/.env
+  #   restart: always
+  #   ports:
+  #     - "5434:5432"
+  #   networks:
+  #     - uitgo-net
+  #   volumes:
+  #     - trip-data:/var/lib/postgresql/data
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "pg_isready -U postgres"]
+  #     interval: 5s
+  #     timeout: 5s
+  #     retries: 5
+
   driver-redis:
     image: redis:7
     container_name: driver-redis
@@ -49,8 +67,12 @@ services:
     ports:
       - "8082:8082"
     depends_on:
+      #driver-db:
+      #  condition: service_healthy
       driver-redis:
         condition: service_started
+      localstack:
+        condition: service_healthy
     networks:
       - uitgo-net
 
@@ -87,12 +109,12 @@ services:
         condition: service_started
       driver-service:
         condition: service_started
+      localstack:
+        condition: service_healthy
     networks:
       - uitgo-net
 
-  # ===========================
-  #        API GATEWAY
-  # ===========================
+  # --- API GATEWAY ---
   api-gateway:
     build: ./modules/api-gateway
     container_name: api-gateway
@@ -110,6 +132,27 @@ services:
     networks:
       - uitgo-net
     restart: always
+
+  # --- LOCALSTACK (SQS) ---
+  localstack:
+    image: localstack/localstack:latest
+    container_name: localstack
+    environment:
+      - LOCALSTACK_SERVICES=sqs
+      - DEBUG=1
+      - AWS_DEFAULT_REGION=us-east-1
+      - EAGER_SERVICE_LOADING=1
+    ports:
+      - "4566:4566"
+    volumes:
+      - ./localstack/init-sqs.sh:/etc/localstack/init/ready.d/init-sqs.sh
+    healthcheck:
+      test: ["CMD", "awslocal", "sqs", "list-queues"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - uitgo-net
 
 # --- NETWORKS & VOLUMES ---
 networks:

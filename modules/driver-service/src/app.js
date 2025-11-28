@@ -4,7 +4,10 @@ import { Server } from "socket.io";
 import cors from "cors";
 import dotenv from "dotenv";
 import driverRoutes from "./routes/driverRoutes.js";
-import redis from "./utils/redis.js";
+import redis, { KEYS } from "./utils/redis.js";
+import { initDB } from "./db/init.js";
+import { startDriverConsumer } from "./workers/driverConsumer.js";
+import { startLocationBatchWorker } from "./workers/locationBatchWorker.js";
 
 dotenv.config();
 
@@ -28,11 +31,19 @@ const io = new Server(server, {
 
 io.on("connection", (socket) => {
   console.log(`🚘 Driver connected: ${socket.id}`);
+  socket.on("registerDriver", (driverId) => {
+    socket.join(`driver:${driverId}`); // Join room riêng
+    console.log(`✅ Driver ${driverId} joined room driver:${driverId}`);
+  });
 
   // 📡 Driver gửi vị trí mỗi vài giây
   socket.on("driverLocationUpdate", async ({ driverId, lat, lng }) => {
+    if (!driverId || !lat || !lng) return;
+
     try {
-      await redis.geoadd("drivers_locations", lng, lat, driverId);
+      await redis.geoadd(KEYS.DRIVERS_LOCATIONS, lng, lat, driverId);
+      const logEntry = `${driverId}|${lat}|${lng}|${Date.now()}`;
+      await redis.rpush(KEYS.LOCATION_BUFFER, logEntry);
       io.emit("driverLocationBroadcast", { driverId, lat, lng }); // Gửi cho mọi passenger
       console.log(`📍 Updated location for driver ${driverId}: ${lat}, ${lng}`);
     } catch (err) {
@@ -44,6 +55,13 @@ io.on("connection", (socket) => {
     console.log(`❌ Driver disconnected: ${socket.id}`);
   });
 });
+
+// start consumer (non-blocking)
+startDriverConsumer(io).catch(err => {
+  console.error("Driver consumer failed to start:", err);
+});
+
+startLocationBatchWorker().catch(err => console.error("Batch Worker Error:", err));
 
 // Kiểm tra kết nối Redis trước khi khởi động server
 async function checkRedisConnection() {
@@ -59,5 +77,6 @@ async function checkRedisConnection() {
 // Khởi động server sau khi Redis sẵn sàng
 server.listen(PORT, async () => {
   await checkRedisConnection();
+  await initDB();
   console.log(`🚗DriverService running on port ${PORT}`);
 });

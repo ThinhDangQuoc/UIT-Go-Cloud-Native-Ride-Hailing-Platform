@@ -1,0 +1,24 @@
+SERVICES variable is ignored if EAGER_SERVICE_LOADING=0.
+Persistence mode was activated using the DATA_DIR variable. DATA_DIR is deprecated and its value is ignored. The data is instead stored into /var/lib/localstack/state in the LocalStack volume.
+2025-11-28T05:56:43.965  WARN --- [  MainThread] localstack.deprecations    : DATA_DIR is deprecated (since 1.0.0) and will be removed in upcoming releases of LocalStack! Please use PERSISTENCE instead. The state will be stored in your LocalStack volume in the state/ directory.
+2025-11-28T05:56:45.261  WARN --- [-functhread3] hypercorn.error            : ASGI Framework Lifespan error, continuing without Lifespan support
+2025-11-28T05:56:45.261  WARN --- [-functhread3] hypercorn.error            : ASGI Framework Lifespan error, continuing without Lifespan support
+2025-11-28T05:56:45.269  INFO --- [-functhread3] hypercorn.error            : Running on https://0.0.0.0:4566 (CTRL + C to quit)
+2025-11-28T05:56:45.269  INFO --- [-functhread3] hypercorn.error            : Running on https://0.0.0.0:4566 (CTRL + C to quit)
+2025-11-28T05:56:45.474  INFO --- [  MainThread] localstack.utils.bootstrap : Execution of "start_runtime_components" took 1442.33ms
+2025-11-28T05:56:53.032 ERROR --- [   asgi_gw_0] l.aws.handlers.logging     : exception during call chain: Operation detection failed. Missing Action in request for query-protocol service ServiceModel(sqs).
+2025-11-28T05:56:53.033  INFO --- [   asgi_gw_0] localstack.request.http    : POST / => 500
+2025-11-28T05:56:53.108 ERROR --- [   asgi_gw_0] l.aws.handlers.logging     : exception during call chain: Operation detection failed. Missing Action in request for query-protocol service ServiceModel(sqs).
+2025-11-28T05:56:53.109  INFO --- [   asgi_gw_0] localstack.request.http    : POST / => 500
+2025-11-28T05:56:53.156 ERROR --- [   asgi_gw_0] l.aws.handlers.logging     : exception during call chain: Operation detection failed. Missing Action in request for query-protocol service ServiceModel(sqs).
+2025-11-28T05:56:53.157  INFO --- [   asgi_gw_0] localstack.request.http    : POST / => 500
+2025-11-28T05:56:53.224 ERROR --- [   asgi_gw_0] l.aws.handlers.logging     : exception during call chain: Operation detection failed. Missing Action in request for query-protocol service ServiceModel(sqs).
+2025-11-28T05:56:53.225  INFO --- [   asgi_gw_0] localstack.request.http    : POST / => 500
+2025-11-28T05:56:57.509 ERROR --- [   asgi_gw_0] l.aws.handlers.logging     : exception during call chain: Operation detection failed. Missing Action in request for query-protocol service ServiceModel(sqs).
+2025-11-28T05:56:57.510  INFO --- [   asgi_gw_0] localstack.request.http    : POST / => 500
+2025-11-28T05:56:57.576 ERROR --- [   asgi_gw_0] l.aws.handlers.logging     : exception during call chain: Operation detection failed. Missing Action in request for query-protocol service ServiceModel(sqs).
+2025-11-28T05:56:57.577  INFO --- [   asgi_gw_0] localstack.request.http    : POST / => 500
+2025-11-28T05:56:57.592 ERROR --- [   asgi_gw_0] l.aws.handlers.logging     : exception during call chain: Operation detection failed. Missing Action in request for query-protocol service ServiceModel(sqs).
+2025-11-28T05:56:57.592  INFO --- [   asgi_gw_0] localstack.request.http    : POST / => 500
+2025-11-28T05:56:57.661 ERROR --- [   asgi_gw_0] l.aws.handlers.logging     : exception during call chain: Operation detection failed. Missing Action in request for query-protocol service ServiceModel(sqs).
+2025-11-28T05:56:57.662  INFO --- [   asgi_gw_0] localstack.request.http    : POST / => 500

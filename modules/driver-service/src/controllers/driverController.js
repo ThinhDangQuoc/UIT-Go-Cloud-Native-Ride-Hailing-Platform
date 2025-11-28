@@ -80,49 +80,45 @@ export async function searchNearbyDrivers(req, res) {
  * Gửi thông báo tới tài xế khi có chuyến đi mới (hiện mô phỏng bằng console log).
  */
 export async function notifyDriver(req, res) {
-  const { id } = req.params;
+  const { id: driverId } = req.params;
   const { tripId } = req.body;
 
-  if (!tripId) {
-    return res.status(400).json({ message: 'Missing tripId' });
-  }
+  console.log(`📢 [DriverService] Driver ${driverId} notified for trip ${tripId}`);
 
-  try {
-    // Trong hệ thống thực, sẽ dùng WebSocket hoặc Push Notification.
-    console.log(`Notifying driver ${id} of trip ${tripId}`);
-    res.json({ message: 'Notification sent' });
-  } catch (error) {
-    console.error('Notify driver error:', error);
-    res.status(500).json({ message: 'Internal server error' });
-  }
+  // Emit event qua Socket.IO
+  req.io.emit(`driver-${driverId}-offer`, { tripId });
+
+  res.json({ message: "Offer sent to driver" });
 }
 
 /**
  * Tài xế chấp nhận chuyến đi — gọi sang TripService để cập nhật trạng thái.
  */
 export async function acceptTrip(req, res) {
-  const { id, tripId } = req.params; // driverId, tripId
+  const { tripId, id: driverId } = req.params;
+
+  console.log(`✅ [DriverService] Driver ${driverId} accepted trip ${tripId}`);
+
   try {
-    console.log(`Driver ${id} accepted trip ${tripId}`);
+    // Gọi sang TripService
+    const response = await axios.post(`${process.env.TRIP_SERVICE_URL}/trips/${tripId}/accept`, {
+      driverId,
+    });
 
-    const authHeader = req.headers.authorization;
+    // Thành công
+    res.json({ message: "Trip accepted successfully", data: response.data });
 
-    await axios.post(
-      `${TRIP_SERVICE_URL}/trips/${tripId}/accept`,
-      { driverId: id },
-      {
-        headers: {
-          ...(authHeader ? { Authorization: authHeader } : {}),
-          "Content-Type": "application/json",
-        },
-        timeout: 5000,
-      }
-    );
+  } catch (error) {
+    // Bắt lỗi từ TripService trả về (ví dụ lỗi 400 do sai trạng thái)
+    console.error("❌ [DriverService] Accept Trip Failed:", error.response?.data || error.message);
+    
+    if (error.response) {
+      // Trả lại đúng mã lỗi từ TripService cho Client (App tài xế)
+      return res.status(error.response.status).json(error.response.data);
+    }
 
-    res.json({ message: "Trip accepted successfully" });
-  } catch (err) {
-    console.error("Accept trip error:", err?.response?.data || err.message);
-    res.status(500).json({ message: err.message });
+    res.status(500).json({ message: "Internal server error connecting to TripService" });
+
   }
 }
 
@@ -130,29 +126,15 @@ export async function acceptTrip(req, res) {
  * Tài xế từ chối chuyến đi — cũng gọi sang TripService để cập nhật.
  */
 export async function rejectTrip(req, res) {
-  const { id, tripId } = req.params;
-  try {
-    console.log(`Driver ${id} rejected trip ${tripId}`);
+  const { tripId, id: driverId } = req.params;
 
-    const authHeader = req.headers.authorization;
+  console.log(`❌ [DriverService] Driver ${driverId} rejected trip ${tripId}`);
 
-    await axios.post(
-      `${TRIP_SERVICE_URL}/trips/${tripId}/reject`,
-      { driverId: id },
-      {
-        headers: {
-          ...(authHeader ? { Authorization: authHeader } : {}),
-          "Content-Type": "application/json",
-        },
-        timeout: 5000,
-      }
-    );
+  await axios.post(`${process.env.TRIP_SERVICE_URL}/trips/${tripId}/reject`, {
+    driverId,
+  });
 
-    res.json({ message: "Trip rejected successfully" });
-  } catch (err) {
-    console.error("Reject trip error:", err?.response?.data || err.message);
-    res.status(500).json({ message: err.message });
-  }
+  res.json({ message: "Trip rejected" });
 }
 
 /**
@@ -163,6 +145,8 @@ export async function updateStatus(req, res) {
   const { id } = req.params;
   const { status } = req.body;
 
+  console.log(`➡️ [DriverService] Received updateStatus: ID=${id}, Status=${status}`);
+
   if (req.user.role !== 'driver' || req.user.id != id) {
     return res.status(403).json({ message: 'Unauthorized' });
   }
@@ -172,12 +156,15 @@ export async function updateStatus(req, res) {
   }
 
   try {
+    console.log("⏳ [DriverService] Connecting to Redis...");
     // Lưu trạng thái hoạt động vào Redis
     await redis.set(`${KEYS.DRIVER_STATUS}${id}`, status);
+    console.log("✅ [DriverService] Redis SET success");
 
     // Nếu offline, xóa khỏi danh sách vị trí
     if (status === 'offline') {
       await redis.zrem(KEYS.DRIVERS_LOCATIONS, id);
+      console.log("✅ [DriverService] Redis ZREM success");
     }
 
     res.json({ message: `Status updated to ${status}` });

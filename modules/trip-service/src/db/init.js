@@ -1,4 +1,4 @@
-import pool from "./db.js"; 
+import db from "./db.js"; 
 // Import kết nối cơ sở dữ liệu PostgreSQL được cấu hình sẵn từ file db.js
 
 export async function initDB() {
@@ -16,10 +16,20 @@ export async function initDB() {
     comment TEXT,                                -- Nhận xét của hành khách (tuỳ chọn)
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP -- Thời gian tạo bản ghi
   );
+
+  CREATE TABLE IF NOT EXISTS outbox_events (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    aggregate_type VARCHAR(50) NOT NULL, -- Vd: 'TRIP'
+    aggregate_id VARCHAR(50) NOT NULL,   -- Vd: Trip ID
+    event_type VARCHAR(50) NOT NULL,     -- Vd: 'TRIP_CREATED'
+    payload JSONB NOT NULL,              -- Nội dung message gửi SQS
+    status VARCHAR(20) DEFAULT 'PENDING',-- PENDING, PROCESSED, FAILED
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  );
   `;
 
   // Thực thi câu lệnh SQL trên database
-  await pool.query(query);
+  await db.query(query);
 
   // Log ra console để xác nhận đã khởi tạo bảng thành công
   console.log("[trip-service] trips table ready");

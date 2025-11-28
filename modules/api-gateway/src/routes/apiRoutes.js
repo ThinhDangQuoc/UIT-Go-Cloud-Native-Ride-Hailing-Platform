@@ -18,7 +18,7 @@ const forwardRequest = async (method, url, data = {}, headers = {}) => {
       url,
       data,
       headers,
-      timeout: 5000,
+      timeout: 15000,
       validateStatus: () => true
     });
     console.log(`[Gateway] Response from service:`, res.status, res.data);
@@ -72,6 +72,16 @@ router.get("/drivers/search", gatewayAuth, async (req, res) => {
   res.status(r.status).json(r.data);
 });
 
+router.put("/drivers/:id/status", gatewayAuth, async (req, res) => {
+  const r = await forwardRequest(
+    "put",
+    `${DRIVER_SERVICE}/api/drivers/${req.params.id}/status`,
+    req.body, // Body chứa { status: 'online' | 'offline' }
+    req.headers
+  );
+  res.status(r.status).json(r.data);
+});
+
 // ====================== TRIPS ========================
 router.post("/trips", gatewayAuth, async (req, res) => {
   const r = await forwardRequest("post", `${TRIP_SERVICE}/api/trips`, req.body, req.headers);
@@ -108,6 +118,26 @@ router.post("/trips/:id/reject", gatewayAuth, async (req, res) => {
     "post",
     `${TRIP_SERVICE}/api/trips/${req.params.id}/reject`,
     req.body,
+    req.headers
+  );
+  res.status(r.status).json(r.data);
+});
+
+router.post("/trips/:id/complete", gatewayAuth, async (req, res) => {
+  const r = await forwardRequest(
+    "post",
+    `${TRIP_SERVICE}/api/trips/${req.params.id}/complete`,
+    req.body,
+    req.headers
+  );
+  res.status(r.status).json(r.data);
+});
+
+router.post("/trips/:id/review", gatewayAuth, async (req, res) => {
+  const r = await forwardRequest(
+    "post",
+    `${TRIP_SERVICE}/api/trips/${req.params.id}/review`,
+    req.body, // Body chứa { rating: 5, comment: "..." }
     req.headers
   );
   res.status(r.status).json(r.data);

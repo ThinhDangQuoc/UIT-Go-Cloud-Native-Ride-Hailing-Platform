@@ -1,8 +1,6 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
-import axios from "axios";
-import { publishToSQS } from "./utils/sqsClient.js";
 import apiRoutes from "./routes/apiRoutes.js";
 
 dotenv.config();
