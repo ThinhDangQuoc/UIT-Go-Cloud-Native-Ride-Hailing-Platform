@@ -61,23 +61,34 @@ Phần này mô tả tổng quan cấp cao về cấu trúc thư mục và cách
    +---------+-----------+
              |
              v
-   +---------------------+          +---------------------+
-   |  Trip Service       |<-------->|  Driver Service     |
-   |  (Điều phối chuyến) |          |  (Định vị + phản hồi)|
-   +---------------------+          +---------------------+
-             ^
+   +---------------------+
+   |     API Gateway     |
+   |   (Express.js)      |
+   +---------+-----------+
              |
-   +---------------------+
-   |  User Service       |
-   | (Đăng ký / đăng nhập)|
-   +---------------------+
-
-   [PostgreSQL] User Service và Trip Service  |
-   [Redis Geospatial] Driver service
+     ┌───────┼───────┐
+     v       v       v
++----------+ +----------+ +----------+
+|  User    | |  Driver  | |  Trip    |
+| Service  | | Service  | | Service  |
++----------+ +----------+ +----------+
+     |           |             |
+     v           v             v
+[PostgreSQL] [Redis Geo]  [PostgreSQL]
+                |
+                v
+         [SQS Queues]
+                |
+                v
+     [Lambda Batch Writer]
+                |
+                v
+     [PostgreSQL - History]
 ```
 
-Các service giao tiếp **qua REST API** bằng Axios.  
-Dữ liệu vị trí tài xế lưu trong **Redis GEO**, mỗi service có **database riêng biệt**.
+Các service giao tiếp **qua REST API** bằng Axios thông qua API Gateway.  
+Dữ liệu vị trí tài xế lưu trong **Redis GEO** + **Redis Stream**, mỗi service có **database riêng biệt**.
+Event streaming qua **AWS SQS** cho location history và analytics.
 
 ---
 

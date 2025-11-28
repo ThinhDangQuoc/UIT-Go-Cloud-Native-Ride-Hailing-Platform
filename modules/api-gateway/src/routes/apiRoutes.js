@@ -57,6 +57,17 @@ router.put("/drivers/:id/location", gatewayAuth, async (req, res) => {
   res.status(r.status).json(r.data);
 });
 
+// Batch location update endpoint (optimized for high-frequency updates)
+router.post("/drivers/:id/location/batch", gatewayAuth, async (req, res) => {
+  const r = await forwardRequest(
+    "put",
+    `${DRIVER_SERVICE}/api/drivers/${req.params.id}/location`,
+    { locations: req.body.locations },
+    req.headers
+  );
+  res.status(r.status).json(r.data);
+});
+
 router.get("/drivers/:id/location", gatewayAuth, async (req, res) => {
   const r = await forwardRequest(
     "get",
@@ -68,7 +79,27 @@ router.get("/drivers/:id/location", gatewayAuth, async (req, res) => {
 });
 
 router.get("/drivers/search", gatewayAuth, async (req, res) => {
-  const r = await forwardRequest("get", `${DRIVER_SERVICE}/api/drivers/search`, {}, req.headers);
+  // Forward query params for radius search
+  const queryString = new URLSearchParams(req.query).toString();
+  const url = `${DRIVER_SERVICE}/api/drivers/search${queryString ? '?' + queryString : ''}`;
+  const r = await forwardRequest("get", url, {}, req.headers);
+  res.status(r.status).json(r.data);
+});
+
+// Driver status update (online/offline/on_trip)
+router.put("/drivers/:id/status", gatewayAuth, async (req, res) => {
+  const r = await forwardRequest(
+    "put",
+    `${DRIVER_SERVICE}/api/drivers/${req.params.id}/status`,
+    req.body,
+    req.headers
+  );
+  res.status(r.status).json(r.data);
+});
+
+// Location service stats (monitoring)
+router.get("/drivers/stats/location", async (req, res) => {
+  const r = await forwardRequest("get", `${DRIVER_SERVICE}/api/drivers/stats/location`, {}, {});
   res.status(r.status).json(r.data);
 });
 
