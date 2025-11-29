@@ -4,6 +4,7 @@ import { Server } from "socket.io";
 import { createAdapter } from "@socket.io/redis-adapter";
 import { createClient } from "redis";
 import cors from "cors";
+import compression from "compression";
 import dotenv from "dotenv";
 import driverRoutes from "./routes/driverRoutes.js";
 import redis, { KEYS } from "./utils/redis.js"; 
@@ -13,8 +14,11 @@ import { startLocationBatchWorker } from "./workers/locationBatchWorker.js";
 dotenv.config();
 
 const app = express();
+
+// === PERFORMANCE OPTIMIZATIONS ===
+app.use(compression());           // Gzip response compression
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '1kb' }));  // Limit body size for location updates
 
 app.use("/api", driverRoutes);
 

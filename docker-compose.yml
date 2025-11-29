@@ -69,6 +69,15 @@ services:
     restart: always
     ports:
       - "6379:6379"
+    # === REDIS OPTIMIZATION ===
+    command: >
+      redis-server
+      --maxclients 10000
+      --tcp-backlog 511
+      --timeout 0
+      --tcp-keepalive 300
+      --save ""
+      --appendonly no
     networks:
       - uitgo-net
 
@@ -88,6 +97,15 @@ services:
         condition: service_healthy
     networks:
       - uitgo-net
+    # === PERFORMANCE: Resource limits ===
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 1024M
+        reservations:
+          cpus: '1.0'
+          memory: 512M
 
   # --- TRIP SERVICE ---
   trip-db:
