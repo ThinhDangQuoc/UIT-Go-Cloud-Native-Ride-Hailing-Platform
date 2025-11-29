@@ -1,5 +1,6 @@
 import { createTripWithOutbox, createTrip, getTripById, updateTripStatus, assignDriver, updateTripReview } from "../models/tripModel.js";
 import { TRIP_STATUS } from "../utils/constants.js";
+import { pushTripOfferJob } from "../utils/tripSqs.js";
 
 // Hàm tạo chuyến đi mới
 export async function createTripHandler(req, res) {
@@ -28,10 +29,23 @@ export async function createTripHandler(req, res) {
       fare: 50000,
       status: TRIP_STATUS.SEARCHING
     });
+    
+    // 6. Đẩy tin nhắn lên SQS để thông báo tài xế (bên trong hàm này có xử lý lỗi)
+    await pushTripOfferJob({
+      tripId: trip.id,
+      pickup: trip.pickup,
+      destination: trip.destination,
+      fare: trip.fare,
+      passengerId: trip.passenger_id, 
+      pickupLat: pickupLat, 
+      pickupLng: pickupLng
+    });
+
+    console.log("✅ [TripService] Job pushed successfully");
 
     // 7. Trả về kết quả cho Client
     return res.status(201).json({
-      message: "Trip created",
+      message: "Trip created and offer sent",
       tripId: trip.id,
       status: trip.status
     });

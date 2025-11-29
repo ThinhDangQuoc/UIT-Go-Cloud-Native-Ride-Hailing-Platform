@@ -4,8 +4,7 @@ import { Server } from "socket.io";
 import cors from "cors";
 import dotenv from "dotenv";
 import driverRoutes from "./routes/driverRoutes.js";
-import redis, { KEYS } from "./utils/redis.js";
-import { initDB } from "./db/init.js";
+import redis, { KEYS } from "./utils/redis.js"; 
 import { startDriverConsumer } from "./workers/driverConsumer.js";
 import { startLocationBatchWorker } from "./workers/locationBatchWorker.js";
 
@@ -15,68 +14,86 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Đăng ký các route của DriverService
 app.use("/api", driverRoutes);
 
 const PORT = process.env.PORT || 8082;
 const server = http.createServer(app);
 
-// ✅ Khởi tạo Socket.IO
 const io = new Server(server, {
-  cors: {
-    origin: "*", // hoặc domain frontend của bạn
-    methods: ["GET", "POST"]
-  }
+  cors: { origin: "*", methods: ["GET", "POST"] }
 });
 
 io.on("connection", (socket) => {
-  console.log(`🚘 Driver connected: ${socket.id}`);
+  // console.log(`🔌 Connection: ${socket.id}`);
+
+  // 1️⃣ Dành cho TÀI XẾ: Đăng ký nhận Offer
   socket.on("registerDriver", (driverId) => {
-    socket.join(`driver:${driverId}`); // Join room riêng
-    console.log(`✅ Driver ${driverId} joined room driver:${driverId}`);
+    socket.join(`driver:${driverId}`);
+    // console.log(`✅ Driver ${driverId} joined room driver:${driverId}`);
   });
 
-  // 📡 Driver gửi vị trí mỗi vài giây
-  socket.on("driverLocationUpdate", async ({ driverId, lat, lng }) => {
+  // 2️⃣ Dành cho HÀNH KHÁCH: Theo dõi chuyến đi (User Story 3)
+  // Khi khách mở màn hình "Đang đến đón" hoặc "Đang đi", client gửi event này
+  socket.on("joinTripRoom", (tripId) => {
+    socket.join(`trip:${tripId}`);
+    console.log(`👀 Passenger joined tracking room: trip:${tripId}`);
+  });
+
+  // 3️⃣ Dành cho TÀI XẾ: Gửi vị trí liên tục (User Story 4)
+  socket.on("driverLocationUpdate", async (data) => {
+    const { driverId, tripId, lat, lng } = data;
+
     if (!driverId || !lat || !lng) return;
 
     try {
+      // A. Lưu vào Redis Geo (Để tìm xe)
       await redis.geoadd(KEYS.DRIVERS_LOCATIONS, lng, lat, driverId);
+      
+      // B. Lưu vào Buffer (Để lưu lịch sử DB - Batch Worker xử lý)
       const logEntry = `${driverId}|${lat}|${lng}|${Date.now()}`;
       await redis.rpush(KEYS.LOCATION_BUFFER, logEntry);
-      io.emit("driverLocationBroadcast", { driverId, lat, lng }); // Gửi cho mọi passenger
-      console.log(`📍 Updated location for driver ${driverId}: ${lat}, ${lng}`);
+
+      // C. Realtime Tracking (Gửi riêng cho hành khách của chuyến này)
+      if (tripId) {
+        // Chỉ gửi vào room của chuyến đi cụ thể
+        io.to(`trip:${tripId}`).emit("tripLocationUpdate", {
+          tripId,
+          driverId,
+          lat,
+          lng,
+          bearing: data.bearing || 0, // Hướng xe (nếu có)
+          speed: data.speed || 0     // Tốc độ (nếu có)
+        });
+        // Debug nhẹ
+        // process.stdout.write(`📍 Streamed to trip:${tripId} > ${lat},${lng}\r`);
+      }
+
     } catch (err) {
-      console.error("Redis GEOADD error:", err.message);
+      console.error("❌ Location Error:", err.message);
     }
   });
 
   socket.on("disconnect", () => {
-    console.log(`❌ Driver disconnected: ${socket.id}`);
+    // console.log(`❌ Disconnected: ${socket.id}`);
   });
 });
 
-// start consumer (non-blocking)
-startDriverConsumer(io).catch(err => {
-  console.error("Driver consumer failed to start:", err);
-});
-
+// Start Workers
+startDriverConsumer(io).catch(err => console.error("Driver Consumer Error:", err));
 startLocationBatchWorker().catch(err => console.error("Batch Worker Error:", err));
 
-// Kiểm tra kết nối Redis trước khi khởi động server
+// Check Redis & Start Server
 async function checkRedisConnection() {
   try {
     await redis.ping();
-    console.log("✅Redis connection ready");
+    console.log("✅ Redis connection ready");
   } catch (error) {
-    console.error("❌Redis connection error:", error);
+    console.error("❌ Redis connection error:", error);
     process.exit(1);
   }
 }
 
-// Khởi động server sau khi Redis sẵn sàng
 server.listen(PORT, async () => {
   await checkRedisConnection();
-  await initDB();
-  console.log(`🚗DriverService running on port ${PORT}`);
+  console.log(`🚗 DriverService running on port ${PORT}`);
 });

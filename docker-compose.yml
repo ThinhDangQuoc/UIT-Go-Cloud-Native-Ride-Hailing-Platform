@@ -32,23 +32,25 @@ services:
       - uitgo-net
 
   # --- DRIVER SERVICE ---
-  # driver-db:
-  #   image: postgres:15
-  #   container_name: driver-db
-  #   env_file:
-  #     - ./modules/driver-service/.env
-  #   restart: always
-  #   ports:
-  #     - "5434:5432"
-  #   networks:
-  #     - uitgo-net
-  #   volumes:
-  #     - trip-data:/var/lib/postgresql/data
-  #   healthcheck:
-  #     test: ["CMD-SHELL", "pg_isready -U postgres"]
-  #     interval: 5s
-  #     timeout: 5s
-  #     retries: 5
+  driver-db:
+    image: postgres:15
+    container_name: driver-db
+    env_file:
+      - ./modules/driver-service/.env
+    restart: always
+    environment:
+      - POSTGRES_HOST_AUTH_METHOD=trust
+    ports:
+      - "5434:5432"
+    networks:
+      - uitgo-net
+    volumes:
+      - trip-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   driver-redis:
     image: redis:7
@@ -67,8 +69,8 @@ services:
     ports:
       - "8082:8082"
     depends_on:
-      #driver-db:
-      #  condition: service_healthy
+      driver-db:
+        condition: service_healthy
       driver-redis:
         condition: service_started
       localstack:
@@ -83,6 +85,8 @@ services:
     env_file:
       - ./modules/trip-service/.env
     restart: always
+    environment:
+      - POSTGRES_HOST_AUTH_METHOD=trust
     ports:
       - "5435:5432"
     networks:
@@ -145,7 +149,7 @@ services:
     ports:
       - "4566:4566"
     volumes:
-      - ./localstack/init-sqs.sh:/etc/localstack/init/ready.d/init-sqs.sh
+      - ./infrastructure/localstack/init-sqs.sh:/etc/localstack/init/ready.d/init-sqs.sh
     healthcheck:
       test: ["CMD", "awslocal", "sqs", "list-queues"]
       interval: 5s

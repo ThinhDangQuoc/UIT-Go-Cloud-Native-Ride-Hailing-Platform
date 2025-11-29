@@ -9,7 +9,10 @@ const OFFER_TIMEOUT_MS = 15000; // ⏳ 15 Giây hết hạn
 const sqsClient = new SQSClient({
   region: REGION,
   endpoint: SQS_ENDPOINT,
-  credentials: { accessKeyId: "test", secretAccessKey: "test" },
+  credentials: {
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID || "test",
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || "test",
+  },
 });
 
 let queueUrl = null;
@@ -44,6 +47,7 @@ export async function startDriverConsumer(io) {
         for (const msg of Messages) {
           try {
             const body = JSON.parse(msg.Body);
+            const tripData = body.data;
             // Lấy timestamp lúc tạo job
             const jobCreatedTime = new Date(body.timestamp).getTime();
             const now = Date.now();
@@ -83,6 +87,13 @@ export async function startDriverConsumer(io) {
                   console.log(`📡 Sent to ${nearbyDriverIds.length} drivers.`);
                }
             }
+            
+            io.emit("tripOffer", { 
+               message: "New trip available!",
+               trip: tripData 
+            });
+
+            console.log(`📡 [DriverConsumer] Broadcasted trip ${tripData.tripId} to drivers`);
 
             await sqsClient.send(new DeleteMessageCommand({
               QueueUrl: queueUrl, ReceiptHandle: msg.ReceiptHandle

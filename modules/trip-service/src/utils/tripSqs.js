@@ -1,75 +1,58 @@
-import { SQSClient, SendMessageCommand } from "@aws-sdk/client-sqs";
-import { NodeHttpHandler } from "@smithy/node-http-handler";
+// path: trip-service/utils/tripSqs.js
+import { SQSClient, SendMessageCommand, GetQueueUrlCommand } from "@aws-sdk/client-sqs";
 import dotenv from "dotenv";
 
 dotenv.config();
 
-const SQS_ENDPOINT = process.env.SQS_ENDPOINT || "http://localstack:4566";
-const REGION = process.env.AWS_REGION || "us-east-1";
-const QUEUE_NAME = process.env.SQS_TRIP_QUEUE_NAME || "trip-events";
-
-// 1. Cấu hình Client
+// Cấu hình Client SDK v3
 const sqsClient = new SQSClient({
-  region: REGION,
-  endpoint: SQS_ENDPOINT,
+  region: process.env.AWS_REGION || "us-east-1",
+  endpoint: process.env.SQS_ENDPOINT || "http://localstack:4566",
   credentials: {
-    accessKeyId: "test",
-    secretAccessKey: "test",
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID || "test",
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || "test",
   },
-  // Timeout 2s để Gateway không bị 504 Gateway Timeout
-  requestHandler: new NodeHttpHandler({
-    connectionTimeout: 2000, 
-    socketTimeout: 2000,
-  }),
-  maxAttempts: 1, 
 });
 
-// 2. Hàm tạo URL tĩnh (Nhanh hơn, không cần gọi mạng)
-const getQueueUrl = () => {
-  // Cấu trúc URL chuẩn của LocalStack: http://host:port/queue/queueName
-  // Hoặc: http://host:port/000000000000/queueName
+const QUEUE_NAME = process.env.SQS_TRIP_QUEUE_NAME || "trip-events";
+let queueUrlCache = null;
+
+// Hàm lấy Queue URL động (để tránh hardcode account ID của LocalStack)
+async function getQueueUrl() {
+  if (queueUrlCache) return queueUrlCache;
   
-  // Xử lý trường hợp chạy trên máy local vs docker
-  let baseUrl = SQS_ENDPOINT;
-  if (baseUrl.includes("localhost")) {
-    baseUrl = baseUrl.replace("localstack", "localhost");
-  }
-
-  // Loại bỏ dấu / ở cuối nếu có
-  if (baseUrl.endsWith("/")) baseUrl = baseUrl.slice(0, -1);
-
-  // Return URL chuẩn: endpoint + /000000000000/ + queueName
-  return `${baseUrl}/000000000000/${QUEUE_NAME}`;
-};
-
-// 3. Hàm gửi Job
-export const pushTripOfferJob = async (tripData) => {
-  // Lấy URL ngay lập tức, không cần await network
-  const queueUrl = getQueueUrl();
-  console.log(`⏳ [TripSqs] Pushing to: ${queueUrl}`);
-
-  const payload = {
-    type: "TRIP_OFFER",
-    data: tripData,
-    timestamp: new Date().toISOString(),
-  };
-
   try {
+    const command = new GetQueueUrlCommand({ QueueName: QUEUE_NAME });
+    const response = await sqsClient.send(command);
+    queueUrlCache = response.QueueUrl;
+    return queueUrlCache;
+  } catch (error) {
+    console.error("❌ [TripService] Error getting Queue URL:", error);
+    throw error;
+  }
+}
+
+// Hàm gửi Job (Offer chuyến đi)
+export const pushTripOfferJob = async (tripData) => {
+  try {
+    const queueUrl = await getQueueUrl();
+    
+    const payload = {
+      type: "TRIP_OFFER", // Định danh loại sự kiện
+      data: tripData,
+      timestamp: new Date().toISOString(),
+    };
+
     const command = new SendMessageCommand({
       QueueUrl: queueUrl,
       MessageBody: JSON.stringify(payload),
     });
 
     const result = await sqsClient.send(command);
-    console.log(`✅ [TripSqs] Success! MsgID: ${result.MessageId}`);
+    console.log(`📤 [TripService] SQS Sent | MsgID: ${result.MessageId}`);
     return result;
-
   } catch (err) {
-    console.error("❌ [TripSqs] FAILED to push job.");
-    console.error(`   Endpoint: ${SQS_ENDPOINT}`);
-    console.error(`   Error: ${err.message}`);
-    
-    // Fail-safe: Không throw lỗi để Trip vẫn tạo thành công
-    return null;
+    console.error("❌ [TripService] SQS Send Error:", err);
+    throw err;
   }
 };
