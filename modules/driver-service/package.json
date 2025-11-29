@@ -16,7 +16,6 @@
     "ioredis": "^5.8.2",
     "jsonwebtoken": "^9.0.2",
     "pg": "^8.11.3",
-    "socket.io": "^4.8.1",
-    "@aws-sdk/client-sqs": "^3.496.0"
+    "socket.io": "^4.8.1"
   }
 }
