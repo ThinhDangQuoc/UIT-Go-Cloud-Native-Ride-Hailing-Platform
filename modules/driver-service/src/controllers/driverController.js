@@ -16,11 +16,6 @@ export async function updateLocation(req, res) {
   const { id } = req.params;
   const { lat, lng, heading, speed, accuracy, tripId, locations } = req.body;
 
-  // Xác thực quyền truy cập: chỉ tài xế có ID trùng với token mới được phép cập nhật
-  if (req.user.role !== 'driver' || req.user.id != id) {
-    return res.status(403).json({ message: 'Unauthorized' });
-  }
-
   try {
     // Batch update mode (client-side batching)
     if (locations && Array.isArray(locations)) {
