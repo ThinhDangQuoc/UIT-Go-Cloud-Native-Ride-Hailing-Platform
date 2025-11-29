@@ -4,9 +4,6 @@ import { TRIP_STATUS } from "../utils/constants.js";
 // Hàm tạo chuyến đi mới
 export async function createTripHandler(req, res) {
   try {
-    console.log("➡️ [TripService] Incoming request body:", req.body);
-    console.log("➡️ [TripService] Incoming headers:", req.headers);
-
     const { pickup, destination, pickupLat, pickupLng } = req.body;
 
     // 1. Validation cơ bản
@@ -17,7 +14,7 @@ export async function createTripHandler(req, res) {
     // 2. Lấy User ID (Passenger ID)
     // Ưu tiên lấy từ Header (x-user-id) do API Gateway hoặc Auth Middleware truyền vào
     // Fallback: lấy từ body nếu test nhanh (nhưng production nên dùng header/token)
-    const passengerId = req.headers["x-user-id"] || req.body.passengerId;
+    const passengerId = req.headers["x-user-id"] || req.user?.id;
 
     if (!passengerId) {
       return res.status(400).json({ message: "Missing passengerId (check headers 'x-user-id')" });
@@ -64,8 +61,14 @@ export async function getTripHandler(req, res) {
 export async function cancelTripHandler(req, res) {
   try {
     const { id } = req.params;
+    const userId = req.headers["x-user-id"] || req.user?.id;
     const trip = await getTripById(id);
     if (!trip) return res.status(404).json({ message: "Trip not found" });
+
+    if (userId && String(trip.passenger_id) !== String(userId)) {
+      console.log(`❌ [Cancel Trip] Unauthorized: User ${userId} tried to cancel trip of ${trip.passenger_id}`);
+      return res.status(403).json({ message: "You are not authorized to cancel this trip" });
+    }
 
     // Không cho phép hủy nếu chuyến đi đã hoàn thành
     if (trip.status === TRIP_STATUS.COMPLETED)
@@ -81,10 +84,22 @@ export async function cancelTripHandler(req, res) {
 
 // Đánh dấu chuyến đi đã hoàn thành
 export async function completeTripHandler(req, res) {
+  // 1. Lấy ID người yêu cầu (Driver) từ Header hoặc Middleware
+  const requesterId = req.headers["x-user-id"] || req.user?.id;
   try {
     const { id } = req.params;
     const trip = await getTripById(id);
     if (!trip) return res.status(404).json({ message: "Trip not found" });
+
+    // 3. CHECK QUYỀN: Chỉ tài xế được gán cho chuyến này mới được hoàn thành
+    // (Dùng String() để so sánh an toàn giữa số và chuỗi)
+    if (!requesterId || String(trip.driver_id) !== String(requesterId)) {
+      console.log(`❌ [Complete Debug] Unauthorized! Driver '${trip.driver_id}' expected, but got '${requesterId}'`);
+      return res.status(403).json({ 
+        message: "You are not authorized to complete this trip",
+        debug: `Trip belongs to driver ${trip.driver_id}` 
+      });
+    }
 
     // Chỉ có thể hoàn thành nếu chuyến đi đang được chấp nhận hoặc đang diễn ra
     if (trip.status !== TRIP_STATUS.ACCEPTED && trip.status !== TRIP_STATUS.IN_PROGRESS)
@@ -103,28 +118,55 @@ export async function reviewTripHandler(req, res) {
   try {
     const { id } = req.params; // ID của chuyến đi
     const { rating, comment } = req.body;
-    const passengerId = req.user?.id; // Lấy ID người dùng từ middleware xác thực
+    
+    // 1. Lấy ID an toàn: Ưu tiên lấy từ Header (do Gateway gửi) -> sau đó mới tới req.user
+    const passengerId = req.headers["x-user-id"] || req.user?.id;
+
+    console.log("-------------------------------------------------");
+    console.log(`🔍 [Review Debug] Incoming Review for TripID: ${id}`);
+    console.log(`🔍 [Review Debug] PassengerID from Request: '${passengerId}' (Type: ${typeof passengerId})`);
 
     // Kiểm tra điểm đánh giá hợp lệ
-    if (!rating || rating < 1 || rating > 5)
+    if (!rating || rating < 1 || rating > 5) {
       return res.status(400).json({ message: "Rating must be between 1 and 5" });
+    }
 
     const trip = await getTripById(id);
-    if (!trip) return res.status(404).json({ message: "Trip not found" });
+    
+    if (!trip) {
+      console.log("❌ [Review Debug] Trip not found in DB");
+      return res.status(404).json({ message: "Trip not found" });
+    }
+
+    console.log(`🔍 [Review Debug] DB Trip Info: Status='${trip.status}', PassengerID='${trip.passenger_id}' (Type: ${typeof trip.passenger_id})`);
 
     // Chỉ được đánh giá khi chuyến đi đã hoàn thành
-    if (trip.status !== "completed")
+    // (Kiểm tra cả viết hoa viết thường cho chắc chắn)
+    if (trip.status !== "completed" && trip.status !== "COMPLETED") {
+      console.log(`❌ [Review Debug] Invalid Status: ${trip.status}`);
       return res.status(400).json({ message: "Trip must be completed to review" });
+    }
 
-    // Chỉ người đặt chuyến mới có thể đánh giá
-    if (trip.passenger_id !== passengerId)
-      return res.status(403).json({ message: "You are not allowed to review this trip" });
+    // 2. SO SÁNH AN TOÀN: Ép kiểu cả 2 về String trước khi so sánh
+    // Để tránh lỗi: 10 (number) !== "10" (string)
+    const isMatch = String(trip.passenger_id) === String(passengerId);
+
+    if (!isMatch) {
+      console.log(`❌ [Review Debug] 403 Forbidden. Mismatch: DB '${trip.passenger_id}' vs Req '${passengerId}'`);
+      return res.status(403).json({ 
+        message: "You are not allowed to review this trip",
+        debug: `Expected passenger ${trip.passenger_id}, but got ${passengerId}`
+      });
+    }
 
     // Cập nhật đánh giá vào cơ sở dữ liệu
     const updated = await updateTripReview(trip.id, rating, comment || "");
+    
+    console.log("✅ [Review Debug] Review submitted successfully");
     res.status(201).json({ message: "Review submitted", trip: updated });
+
   } catch (err) {
-    console.error("reviewTripHandler error:", err);
+    console.error("❌ [Review Debug] Error:", err);
     res.status(500).json({ message: err.message });
   }
 }
