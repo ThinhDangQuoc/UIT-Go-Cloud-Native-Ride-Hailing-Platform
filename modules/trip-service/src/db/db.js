@@ -11,6 +11,7 @@ const writePool = new Pool({
   database: process.env.POSTGRES_DB,     // Tên cơ sở dữ liệu
   password: process.env.POSTGRES_PASSWORD, // Mật khẩu của user
   port: process.env.POSTGRES_PORT,       // Cổng PostgreSQL 
+  max: 20, // Giới hạn số connection tối đa cho write pool
   ssl: false
 });
 
@@ -20,7 +21,7 @@ const readPool = new pg.Pool({
   user: process.env.POSTGRES_USER,
   password: process.env.POSTGRES_PASSWORD,
   database: process.env.POSTGRES_NAME,
-  max: 50, // Cho phép nhiều connection hơn để phục vụ đọc
+  max: 100, // Cho phép nhiều connection hơn để phục vụ đọc
   ssl: false
 });
 
