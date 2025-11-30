@@ -11,6 +11,7 @@ const pool = new Pool({
   database: process.env.POSTGRES_DB,    // Tên cơ sở dữ liệu
   password: process.env.POSTGRES_PASSWORD, // Mật khẩu người dùng
   port: process.env.POSTGRES_PORT,      // Cổng PostgreSQL (mặc định là 5432)
+  ssl: false,                           // Không dùng SSL trong môi trường local
 });
 
 // Export pool để các file khác có thể dùng để query DB

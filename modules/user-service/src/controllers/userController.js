@@ -1,10 +1,14 @@
 // Import các thư viện cần thiết
 import bcrypt from "bcryptjs"; // Dùng để mã hóa (hash) mật khẩu
 import jwt from "jsonwebtoken"; // Dùng để tạo và xác thực token JWT
+import redis from "../utils/redis.js";
 import { createUser, findUserByEmail, findUserById } from "../models/userModel.js"; // Các hàm thao tác với cơ sở dữ liệu người dùng
 
-// Biến môi trường chứa secret key dùng để ký JWT
+const CACHE_TTL = 3600;
 const JWT_SECRET = process.env.JWT_SECRET;
+
+// Helper: Key chuẩn cho Redis
+const getCacheKey = (userId) => `user:profile:${userId}`;
 
 // Register function
 export async function register(req, res) {
@@ -105,9 +109,30 @@ export async function getProfile(req, res) {
     const userId = req.user?.id;
     if (!userId) return res.status(401).json({ message: "Unauthorized" });
 
-    // Tìm thông tin người dùng theo id
+    const cacheKey = getCacheKey(userId);
+
+    // 1️⃣ CACHE HIT: Kiểm tra Redis trước
+    console.time("Redis Get");
+    const cachedData = await redis.get(cacheKey);
+    console.timeEnd("Redis Get");
+
+    if (cachedData) {
+      console.log(`⚡ [UserService] Cache HIT for user ${userId}`);
+      return res.json(JSON.parse(cachedData));
+    }
+
+    // 2️⃣ CACHE MISS: Nếu không có, gọi Database
+    console.log(`🐢 [UserService] Cache MISS for user ${userId}. Fetching DB...`);
+
+    console.time("DB Query");
     const user = await findUserById(userId);
+    console.timeEnd("DB Query");
+
     if (!user) return res.status(404).json({ message: "User not found" });
+
+    // 3️⃣ CACHE FILL: Lưu vào Redis cho lần sau (TTL 1 giờ)
+    // setex: SET with Expiration
+    await redis.setex(cacheKey, CACHE_TTL, JSON.stringify(userResponse));
 
     // Trả về thông tin người dùng (ẩn mật khẩu)
     res.json({

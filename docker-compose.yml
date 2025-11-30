@@ -6,6 +6,8 @@ services:
     env_file:
       - ./modules/user-service/.env
     restart: always
+    environment:
+      - POSTGRES_HOST_AUTH_METHOD=trust
     ports:
       - "5433:5432"
     networks:
@@ -17,6 +19,15 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+
+  user-redis:
+    image: redis:7
+    container_name: user-redis
+    restart: always
+    ports:
+      - "6380:6379"
+    networks:
+      - uitgo-net
 
   user-service:
     build: ./modules/user-service
@@ -72,11 +83,17 @@ services:
 
   driver-service:
     build: ./modules/driver-service
-    container_name: driver-service
+    deploy:
+      mode: replicated
+      replicas: 4
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
     env_file:
       - ./modules/driver-service/.env
     ports:
-      - "8082:8082"
+      - "8084-8087:8082"
     depends_on:
       driver-db:
         condition: service_healthy
@@ -86,15 +103,15 @@ services:
         condition: service_healthy
     networks:
       - uitgo-net
-    # === PERFORMANCE: Resource limits ===
-    deploy:
-      resources:
-        limits:
-          cpus: '2.0'
-          memory: 1024M
-        reservations:
-          cpus: '1.0'
-          memory: 512M
+    # # === PERFORMANCE: Resource limits ===
+    # deploy:
+    #   resources:
+    #     limits:
+    #       cpus: '2.0'
+    #       memory: 1024M
+    #     reservations:
+    #       cpus: '1.0'
+    #       memory: 512M
 
   # --- TRIP SERVICE ---
   trip-db:
