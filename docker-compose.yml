@@ -58,7 +58,7 @@ services:
     networks:
       - uitgo-net
     volumes:
-      - trip-data:/var/lib/postgresql/data
+      - driver-data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
