@@ -1,5 +1,5 @@
 output "alb_dns_name" {
-  value = aws_lb.main.dns_name
+  value = aws_lb.public.dns_name
   description = "Domain truy cập API Gateway"
 }
 
