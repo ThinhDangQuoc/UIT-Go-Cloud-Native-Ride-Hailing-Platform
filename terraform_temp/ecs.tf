@@ -65,6 +65,7 @@ resource "aws_ecs_task_definition" "driver_service" {
       { name = "REDIS_HOST", value = aws_elasticache_cluster.redis.cache_nodes[0].address },
       { name = "SQS_ENDPOINT", value = "https://sqs.${var.aws_region}.amazonaws.com" }, # AWS thật ko dùng localstack
       { name = "SQS_TRIP_QUEUE_NAME", value = aws_sqs_queue.trip_events.name },
+      { name = "TRIP_SERVICE_URL", value = "http://${aws_lb.internal.dns_name}/api" },
       { name = "AWS_REGION", value = var.aws_region }
     ]
     logConfiguration = {
@@ -91,9 +92,28 @@ resource "aws_ecs_service" "driver_service" {
     assign_public_ip = true
   }
   
-  # Service Discovery để các service gọi nhau bằng tên (driver-service.local)
-  # Cần cấu hình thêm AWS Cloud Map nếu muốn gọi nội bộ không qua ALB
-  # Ở đây demo đơn giản, các service gọi nhau qua Private IP hoặc Internal ALB (cần setup thêm)
+  load_balancer {
+    target_group_arn = aws_lb_target_group.driver_service.arn
+    container_name   = "driver-service"
+    container_port   = 8082
+  }
+}
+
+resource "aws_ecs_task_definition" "trip_service" {
+  family                   = "trip-service"
+  # ... (cpu, memory, role) ...
+  container_definitions = jsonencode([{
+    name  = "trip-service"
+    image = "your-dockerhub/trip-service:latest"
+    portMappings = [{ containerPort = 8083 }]
+    environment = [
+      { name = "PORT", value = "8083" },
+      # Gọi DriverService thông qua Internal ALB
+      { name = "DRIVER_SERVICE_URL", value = "http://${aws_lb.internal.dns_name}/api" },
+      # ... (Biến DB, SQS)
+    ]
+    logConfiguration = { /* ... */ }
+  }])
 }
 
 # ... Tương tự cho TRIP-SERVICE và API-GATEWAY
