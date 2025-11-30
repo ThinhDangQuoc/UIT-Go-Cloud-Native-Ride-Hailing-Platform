@@ -39,6 +39,8 @@ services:
     depends_on:
       user-db:
         condition: service_healthy
+      user-redis:
+        condition: service_started
     networks:
       - uitgo-net
 

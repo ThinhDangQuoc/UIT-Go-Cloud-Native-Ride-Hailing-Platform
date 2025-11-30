@@ -4,38 +4,53 @@ dotenv.config(); // Kích hoạt dotenv, giúp process.env có dữ liệu từ 
 
 const { Pool } = pg; // Lấy lớp Pool từ thư viện pg, dùng để tạo connection pool
 
-// Cấu hình pool kết nối đến cơ sở dữ liệu PostgreSQL
+// =============================================================================
+// READ/WRITE SPLIT CONFIGURATION (RDS Read Replicas Pattern)
+// =============================================================================
+
+// WRITE POOL → Points to RDS Master (for INSERT, UPDATE, DELETE)
 const writePool = new Pool({
   host: process.env.POSTGRES_WRITE_HOST || "trip-db", 
-  user: process.env.POSTGRES_USER,       // Tên người dùng DB
-  database: process.env.POSTGRES_DB,     // Tên cơ sở dữ liệu
-  password: process.env.POSTGRES_PASSWORD, // Mật khẩu của user
-  port: process.env.POSTGRES_PORT,       // Cổng PostgreSQL 
-  max: 20, // Giới hạn số connection tối đa cho write pool
+  user: process.env.POSTGRES_USER,
+  database: process.env.POSTGRES_DB,
+  password: process.env.POSTGRES_PASSWORD,
+  port: process.env.POSTGRES_PORT,
+  max: 20, // Giới hạn connection cho write
   ssl: false
 });
 
+// READ POOL → Points to RDS Read Replica (for SELECT)
 const readPool = new pg.Pool({
-  host: process.env.POSTGRES_READ_HOST || "trip-db", // Trỏ tới Replica
+  host: process.env.POSTGRES_READ_HOST || "trip-db",
   port: process.env.POSTGRES_PORT || 5432,
   user: process.env.POSTGRES_USER,
   password: process.env.POSTGRES_PASSWORD,
-  database: process.env.POSTGRES_NAME,
-  max: 100, // Cho phép nhiều connection hơn để phục vụ đọc
+  database: process.env.POSTGRES_DB,
+  max: 100, // Nhiều connection hơn cho read-heavy workloads
   ssl: false
 });
 
+// Log connection info on startup
+console.log(`📝 [DB] Write Pool → ${process.env.POSTGRES_WRITE_HOST || 'trip-db'}`);
+console.log(`📖 [DB] Read Pool  → ${process.env.POSTGRES_READ_HOST || 'trip-db'}`);
+
 export const db = {
-  // Hàm query mặc định (dùng Write Pool cho an toàn hoặc Read tuỳ context)
+  // Default query (uses Write Pool for safety)
   query: (text, params) => writePool.query(text, params),
   
-  // Explicit Write
-  write: (text, params) => writePool.query(text, params),
+  // Explicit WRITE → RDS Master
+  write: async (text, params) => {
+    console.log(`📝 [WRITE] → Master: ${text.substring(0, 50)}...`);
+    return writePool.query(text, params);
+  },
   
-  // Explicit Read
-  read: (text, params) => readPool.query(text, params),
+  // Explicit READ → RDS Replica
+  read: async (text, params) => {
+    console.log(`📖 [READ] → Replica: ${text.substring(0, 50)}...`);
+    return readPool.query(text, params);
+  },
   
-  // Lấy client để chạy Transaction (bắt buộc dùng Write Pool)
+  // Transaction Client (must use Write Pool)
   getTransactionClient: () => writePool.connect(),
 };
 
