@@ -130,18 +130,21 @@ export async function getProfile(req, res) {
 
     if (!user) return res.status(404).json({ message: "User not found" });
 
-    // 3️⃣ CACHE FILL: Lưu vào Redis cho lần sau (TTL 1 giờ)
-    // setex: SET with Expiration
-    await redis.setex(cacheKey, CACHE_TTL, JSON.stringify(userResponse));
-
-    // Trả về thông tin người dùng (ẩn mật khẩu)
-    res.json({
+    // Chuẩn bị response object (không bao gồm password)
+    const userResponse = {
       id: user.id,
       email: user.email,
       role: user.role,
       personal_info: user.personal_info,
       vehicle_info: user.vehicle_info
-    });
+    };
+
+    // 3️⃣ CACHE FILL: Lưu vào Redis cho lần sau (TTL 1 giờ)
+    // setex: SET with Expiration
+    await redis.setex(cacheKey, CACHE_TTL, JSON.stringify(userResponse));
+
+    // Trả về thông tin người dùng (ẩn mật khẩu)
+    res.json(userResponse);
   } catch (err) {
     // Log lỗi và trả về mã lỗi 500
     console.error("getProfile error:", err);
