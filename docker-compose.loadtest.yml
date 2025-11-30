@@ -1,0 +1,202 @@
+# ============================================================
+# DOCKER-COMPOSE CHO LOAD TESTING
+# ============================================================
+# File này scale driver-service lên 3 instances để tăng throughput.
+# Sử dụng: docker-compose -f docker-compose.loadtest.yml up -d
+# ============================================================
+
+services:
+  # --- DRIVER SERVICE (SCALED) ---
+  driver-db:
+    image: postgres:15
+    container_name: driver-db
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=driver_db
+      - POSTGRES_HOST_AUTH_METHOD=trust
+    restart: always
+    ports:
+      - "5434:5432"
+    networks:
+      - uitgo-net
+    volumes:
+      - driver-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+
+  driver-redis:
+    image: redis:7
+    container_name: driver-redis
+    restart: always
+    ports:
+      - "6379:6379"
+    # === REDIS OPTIMIZED FOR HIGH THROUGHPUT ===
+    command: >
+      redis-server
+      --maxclients 10000
+      --tcp-backlog 511
+      --timeout 0
+      --tcp-keepalive 300
+      --save ""
+      --appendonly no
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+    networks:
+      - uitgo-net
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+
+  # DRIVER SERVICE - Instance 1 (Leader)
+  driver-service-1:
+    build: ./modules/driver-service
+    container_name: driver-service-1
+    environment:
+      - PORT=8082
+      - DB_HOST=driver-db
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - DB_NAME=driver_db
+      - REDIS_HOST=driver-redis
+      - REDIS_PORT=6379
+      - CLUSTER_WORKERS=2
+      - NODE_OPTIONS=--max-old-space-size=512
+    depends_on:
+      driver-db:
+        condition: service_healthy
+      driver-redis:
+        condition: service_started
+    networks:
+      - uitgo-net
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 1024M
+        reservations:
+          cpus: '1.0'
+          memory: 512M
+
+  # DRIVER SERVICE - Instance 2
+  driver-service-2:
+    build: ./modules/driver-service
+    container_name: driver-service-2
+    environment:
+      - PORT=8082
+      - DB_HOST=driver-db
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - DB_NAME=driver_db
+      - REDIS_HOST=driver-redis
+      - REDIS_PORT=6379
+      - CLUSTER_WORKERS=2
+      - NODE_OPTIONS=--max-old-space-size=512
+    depends_on:
+      driver-db:
+        condition: service_healthy
+      driver-redis:
+        condition: service_started
+    networks:
+      - uitgo-net
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 1024M
+        reservations:
+          cpus: '1.0'
+          memory: 512M
+
+  # DRIVER SERVICE - Instance 3
+  driver-service-3:
+    build: ./modules/driver-service
+    container_name: driver-service-3
+    environment:
+      - PORT=8082
+      - DB_HOST=driver-db
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - DB_NAME=driver_db
+      - REDIS_HOST=driver-redis
+      - REDIS_PORT=6379
+      - CLUSTER_WORKERS=2
+      - NODE_OPTIONS=--max-old-space-size=512
+    depends_on:
+      driver-db:
+        condition: service_healthy
+      driver-redis:
+        condition: service_started
+    networks:
+      - uitgo-net
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 1024M
+        reservations:
+          cpus: '1.0'
+          memory: 512M
+
+  # --- NGINX LOAD BALANCER ---
+  nginx-lb:
+    image: nginx:alpine
+    container_name: nginx-lb
+    ports:
+      - "8080:80"
+    volumes:
+      - ./nginx-loadtest.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - driver-service-1
+      - driver-service-2
+      - driver-service-3
+    networks:
+      - uitgo-net
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 128M
+
+  # --- LOCALSTACK (SQS) ---
+  localstack:
+    image: localstack/localstack:latest
+    container_name: localstack
+    environment:
+      - LOCALSTACK_SERVICES=sqs
+      - DEBUG=0
+      - AWS_DEFAULT_REGION=us-east-1
+      - EAGER_SERVICE_LOADING=1
+    ports:
+      - "4566:4566"
+    volumes:
+      - ./infrastructure/localstack/init-sqs.sh:/etc/localstack/init/ready.d/init-sqs.sh
+    healthcheck:
+      test: ["CMD", "awslocal", "sqs", "list-queues"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - uitgo-net
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+
+networks:
+  uitgo-net:
+    driver: bridge
+
+volumes:
+  driver-data:

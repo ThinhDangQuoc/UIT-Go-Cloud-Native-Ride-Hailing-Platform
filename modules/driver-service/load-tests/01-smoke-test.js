@@ -1,30 +1,48 @@
 import http from 'k6/http';
 import { check, sleep } from 'k6';
-import { Rate, Trend, Counter } from 'k6/metrics';
+import { Rate, Trend } from 'k6/metrics';
 import { randomIntBetween } from 'https://jslib.k6.io/k6-utils/1.2.0/index.js';
 
 /**
- * SMOKE TEST - Kiểm tra nhanh hệ thống
- * Duration: 1 phút
- * VUs: 10
+ * ═══════════════════════════════════════════════════════════════════════════
+ * SMOKE TEST - KIỂM TRA CHỨC NĂNG CƠ BẢN
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 
+ * Định nghĩa: Smoke testing là kiểm tra sơ bộ để xác nhận các chức năng
+ * QUAN TRỌNG NHẤT của hệ thống hoạt động đúng.
+ * 
+ * Mục đích:
+ * - Xác nhận hệ thống có HOẠT ĐỘNG được không
+ * - Phát hiện lỗi nghiêm trọng sớm
+ * - Quyết định có nên chạy test sâu hơn không
+ * 
+ * Đặc điểm:
+ * - Chạy NHANH (1 phút)
+ * - Tải RẤT NHẸ (5 VUs)
+ * - Yêu cầu gần 100% SUCCESS
+ * 
+ * Kết quả mong đợi: PHẢI PASS
+ * Nếu FAIL → Dừng lại, fix bug trước khi test tiếp
+ * ═══════════════════════════════════════════════════════════════════════════
  */
 
 const BASE_URL = __ENV.BASE_URL || 'http://localhost:8080';
 const JWT_TOKEN = __ENV.JWT_TOKEN || 'test-token';
-// DRIVER_ID phải khớp với user.id trong JWT token để pass auth
-const DRIVER_ID = __ENV.DRIVER_ID || '2';
+const DRIVER_ID = __ENV.DRIVER_ID || '3';
 
-// Metrics
 const successRate = new Rate('success_rate');
 const responseTime = new Trend('response_time', true);
-const errorCount = new Counter('errors');
 
 export const options = {
-  vus: 10,
+  // Smoke test: Tải rất nhẹ, thời gian ngắn
+  vus: 5,
   duration: '1m',
+  
+  // Thresholds NGHIÊM NGẶT - phải gần như 100% pass
   thresholds: {
-    'http_req_duration': ['p(95)<500'],
-    'success_rate': ['rate>0.95'],
+    'http_req_duration': ['p(95)<300'],    // Response phải nhanh
+    'success_rate': ['rate>0.99'],          // 99%+ success
+    'http_req_failed': ['rate<0.01'],       // <1% failure
   },
 };
 
@@ -38,12 +56,10 @@ function generateLocation() {
 }
 
 export default function () {
-  // Sử dụng DRIVER_ID cố định từ token
-  const driverId = DRIVER_ID;
   const location = generateLocation();
 
   const response = http.put(
-    `${BASE_URL}/api/drivers/${driverId}/location`,
+    `${BASE_URL}/api/drivers/${DRIVER_ID}/location`,
     JSON.stringify(location),
     {
       headers: {
@@ -55,33 +71,45 @@ export default function () {
 
   const success = check(response, {
     'status is 200': (r) => r.status === 200,
+    'has response body': (r) => r.body && r.body.length > 0,
   });
 
   successRate.add(success);
   responseTime.add(response.timings.duration);
-  
-  if (!success) {
-    errorCount.add(1);
-  }
 
-  sleep(randomIntBetween(2, 3) / 10);
+  sleep(randomIntBetween(2, 4) / 10);
 }
 
 export function handleSummary(data) {
   const total = data.metrics.http_reqs?.values?.count || 0;
   const avg = data.metrics.http_req_duration?.values?.avg || 0;
   const p95 = data.metrics.http_req_duration?.values['p(95)'] || 0;
-  const success = (data.metrics.success_rate?.values?.rate || 0) * 100;
+  const successRateVal = (data.metrics.success_rate?.values?.rate || 0) * 100;
+  const failRate = (data.metrics.http_req_failed?.values?.rate || 0) * 100;
 
-  console.log('\n╔══════════════════════════════════════════════════════════════╗');
-  console.log('║                    SMOKE TEST RESULTS                        ║');
+  const passed = successRateVal >= 99 && failRate < 1;
+
+  console.log('\n');
+  console.log('╔══════════════════════════════════════════════════════════════╗');
+  console.log('║           🔥 SMOKE TEST - KIỂM TRA CƠ BẢN                    ║');
   console.log('╠══════════════════════════════════════════════════════════════╣');
-  console.log(`║  Total Requests:  ${total.toString().padStart(8)}                              ║`);
-  console.log(`║  Success Rate:    ${success.toFixed(2).padStart(8)}%                             ║`);
-  console.log(`║  Avg Response:    ${avg.toFixed(2).padStart(8)}ms                             ║`);
-  console.log(`║  P95 Response:    ${p95.toFixed(2).padStart(8)}ms                             ║`);
+  console.log(`║  Total Requests:  ${total.toString().padStart(10)}                            ║`);
+  console.log(`║  Success Rate:    ${successRateVal.toFixed(2).padStart(10)}%                           ║`);
+  console.log(`║  Failure Rate:    ${failRate.toFixed(2).padStart(10)}%                           ║`);
+  console.log(`║  Avg Response:    ${avg.toFixed(2).padStart(10)}ms                           ║`);
+  console.log(`║  P95 Response:    ${p95.toFixed(2).padStart(10)}ms                           ║`);
   console.log('╠══════════════════════════════════════════════════════════════╣');
-  console.log(`║  Status: ${success > 95 && p95 < 500 ? '✅ PASSED' : '❌ FAILED'}                                          ║`);
+  
+  if (passed) {
+    console.log('║  ✅ PASSED - Hệ thống hoạt động bình thường                  ║');
+    console.log('║                                                              ║');
+    console.log('║  👉 Tiếp tục chạy: k6 run 02-load-test.js                    ║');
+  } else {
+    console.log('║  ❌ FAILED - Hệ thống có vấn đề nghiêm trọng!                ║');
+    console.log('║                                                              ║');
+    console.log('║  ⛔ DỪNG LẠI - Không chạy Load/Stress test                   ║');
+    console.log('║  👉 Kiểm tra: docker logs driver-service                     ║');
+  }
   console.log('╚══════════════════════════════════════════════════════════════╝\n');
 
   return {};
