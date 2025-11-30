@@ -366,6 +366,33 @@ Module Driver Location Updates đã đạt được tất cả yêu cầu phi ch
 
 ---
 
+## 10. Hướng phát triển
+
+### 10.1 Cải tiến ngắn hạn
+| Cải tiến | Mô tả | Ưu tiên |
+|----------|-------|---------|
+| WebSocket Streaming | Thay REST bằng WebSocket cho location updates liên tục | Cao |
+| Redis Cluster | Triển khai Redis Cluster cho HA và horizontal scaling | Cao |
+| Prometheus + Grafana | Giám sát real-time cho latency, throughput, error rate | Trung bình |
+
+### 10.2 Cải tiến dài hạn
+| Cải tiến | Mô tả | Lợi ích |
+|----------|-------|---------|
+| Kubernetes (EKS) | Migrate từ Docker Compose sang K8s | Auto-scaling, self-healing |
+| gRPC cho internal | Thay REST bằng gRPC giữa services | Giảm 30% latency |
+| Machine Learning | Dự đoán vị trí tài xế, tối ưu matching | UX tốt hơn |
+| Multi-region | Triển khai đa vùng (ap-southeast-1, us-east-1) | Giảm latency global |
+
+### 10.3 Roadmap đề xuất
+```
+Q1 2026: WebSocket + Redis Cluster + Monitoring
+Q2 2026: Kubernetes migration + CI/CD pipeline
+Q3 2026: gRPC internal + Performance optimization
+Q4 2026: Multi-region + ML-based driver matching
+```
+
+---
+
 ## Tài liệu tham khảo
 
 1. Redis GEO Commands: https://redis.io/commands/?group=geo

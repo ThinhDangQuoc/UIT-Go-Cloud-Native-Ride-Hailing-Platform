@@ -22,20 +22,52 @@ UIT-Go là đồ án mô phỏng hệ thống gọi xe (Grab/Uber) được thi�
 
 ```
 uit-go/
- ├── docker-compose.yml
- ├── user-service/
- │   ├── src/
- │   ├── Dockerfile
- │   └── .env
- ├── driver-service/
- │   ├── src/
- │   ├── Dockerfile
- │   └── .env
- ├── trip-service/
- │   ├── src/
- │   ├── Dockerfile
- │   └── .env
- └── README.md
+├── docker-compose.yml           # Orchestrate all microservices
+├── docker-compose.loadtest.yml  # Load testing configuration
+├── README.md                    # Tài liệu hướng dẫn chính
+│
+├── modules/
+│   ├── user-service/            # Quản lý người dùng, xác thực JWT
+│   │   ├── src/
+│   │   ├── Dockerfile
+│   │   └── package.json
+│   ├── driver-service/          # Quản lý tài xế, vị trí GPS
+│   │   ├── src/
+│   │   ├── load-tests/          # K6 load testing scripts
+│   │   ├── Dockerfile
+│   │   └── package.json
+│   ├── trip-service/            # Quản lý chuyến đi
+│   │   ├── src/
+│   │   ├── Dockerfile
+│   │   └── package.json
+│   └── api-gateway/             # API Gateway (Express.js)
+│       ├── src/
+│       ├── Dockerfile
+│       └── package.json
+│
+├── terraform/                   # Infrastructure as Code (AWS)
+│   ├── main.tf                  # Main Terraform configuration
+│   ├── variables.tf             # Input variables
+│   ├── outputs.tf               # Output values
+│   └── modules/
+│       ├── vpc/                 # VPC, Subnets, Internet Gateway
+│       ├── rds/                 # PostgreSQL RDS
+│       ├── sqs/                 # SQS Queue
+│       ├── api_gateway/         # REST API Gateway
+│       ├── lambda_sqs_consumer/ # Lambda function
+│       ├── security_group/      # Security Groups
+│       └── iam/                 # IAM Roles & Policies
+│
+├── docs/                        # Tài liệu kỹ thuật
+│   ├── ARCHITECTURE.md          # Kiến trúc hệ thống tổng quan
+│   ├── REPORT.md                # Báo cáo module chuyên sâu
+│   └── *.md                     # Các tài liệu bổ sung
+│
+└── ADR/                         # Architectural Decision Records
+    ├── 1-decide-microservices-architecture.md
+    ├── 2-decide-redis-for-driver-location.md
+    ├── 3-decide-rest-over-grpc.md
+    └── 4-driver-location-streaming-architecture.md
 ```
 
 ---
@@ -321,11 +353,14 @@ Chi tiết: xem `modules/driver-service/load-tests/LOAD-TEST-REPORT.md`
 | File | Mô tả |
 |------|-------|
 | `docs/ARCHITECTURE.md` | Kiến trúc hệ thống tổng quan |
-| `docs/1-decide-microservices-architecture.md` | ADR: Microservices Architecture |
-| `docs/2-decide-redis-for-driver-location.md` | ADR: Redis cho vị trí tài xế |
-| `docs/3-decide-rest-over-grpc.md` | ADR: REST thay vì gRPC |
 | `docs/REPORT.md` | Báo cáo Module chuyên sâu |
+| `ADR/` | Thư mục chứa Architectural Decision Records |
+| `ADR/1-decide-microservices-architecture.md` | ADR: Microservices Architecture |
+| `ADR/2-decide-redis-for-driver-location.md` | ADR: Redis cho vị trí tài xế |
+| `ADR/3-decide-rest-over-grpc.md` | ADR: REST thay vì gRPC |
+| `ADR/4-driver-location-streaming-architecture.md` | ADR: Event Streaming với SQS |
 | `terraform/API_GATEWAY_SQS_GUIDE.md` | Hướng dẫn API Gateway + SQS |
+| `modules/driver-service/load-tests/LOAD-TEST-REPORT.md` | Kết quả Load Testing chi tiết |
 
 ---
 
