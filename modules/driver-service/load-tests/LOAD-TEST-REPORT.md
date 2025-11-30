@@ -806,6 +806,5 @@ Success Rate (%)
 
 ---
 
-**Prepared by:** GitHub Copilot  
 **Date:** 30/11/2025  
 **Version:** 3.0 - Complete with all test scenarios and trade-off analysis

@@ -224,5 +224,4 @@ Sau khi chạy test, K6 sẽ hiển thị:
 
 ---
 
-**Author:** GitHub Copilot  
 **Last Updated:** 29/11/2024
