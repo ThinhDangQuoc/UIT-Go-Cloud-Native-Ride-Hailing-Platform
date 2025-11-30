@@ -162,4 +162,173 @@ Thêm `-v` để xóa dữ liệu database và cache Redis.
 
 ---
 
-✨ **UIT-Go “Bộ Xương” microservices đã sẵn sàng!**
+## ☁️ 8. Triển khai trên AWS
+
+### 8.1 Yêu cầu
+
+- AWS CLI đã cấu hình (`aws configure`)
+- Terraform ≥ 1.0
+- Tài khoản AWS với quyền tạo VPC, RDS, SQS, Lambda, API Gateway
+
+### 8.2 Kiến trúc AWS
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                         AWS ARCHITECTURE                         │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  ┌──────────────┐     ┌──────────────┐     ┌──────────────┐     │
+│  │  API Gateway │────▶│   AWS SQS    │────▶│ AWS Lambda   │     │
+│  │  (REST API)  │     │  (Queue)     │     │ (Consumer)   │     │
+│  └──────────────┘     └──────────────┘     └──────┬───────┘     │
+│                                                   │              │
+│  ┌──────────────────────────────────────────────┐│              │
+│  │                    VPC                        ││              │
+│  │  ┌────────────────┐  ┌────────────────┐      ││              │
+│  │  │ Public Subnet  │  │ Private Subnet │      ││              │
+│  │  │                │  │                │      ▼│              │
+│  │  │  ┌──────────┐  │  │  ┌──────────┐  │  ┌────────┐         │
+│  │  │  │   EC2    │  │  │  │   RDS    │  │  │PostgreSQL│        │
+│  │  │  │(Services)│  │  │  │(Postgres)│◀─┼──│(History)│         │
+│  │  │  └──────────┘  │  │  └──────────┘  │  └────────┘         │
+│  │  └────────────────┘  └────────────────┘                      │
+│  └──────────────────────────────────────────────────────────────┘│
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### 8.3 Triển khai với Terraform
+
+```bash
+# 1. Di chuyển vào thư mục terraform
+cd terraform
+
+# 2. Khởi tạo Terraform
+terraform init
+
+# 3. Xem trước các resources sẽ tạo
+terraform plan
+
+# 4. Triển khai lên AWS
+terraform apply
+
+# 5. Xem outputs (API endpoints, queue URLs...)
+terraform output
+```
+
+### 8.4 Cấu hình biến môi trường
+
+Tạo file `terraform/terraform.tfvars`:
+
+```hcl
+# AWS Region
+aws_region = "ap-southeast-1"
+
+# VPC Configuration
+vpc_cidr             = "10.0.0.0/16"
+public_subnet_cidrs  = ["10.0.1.0/24", "10.0.2.0/24"]
+private_subnet_cidrs = ["10.0.3.0/24", "10.0.4.0/24"]
+
+# RDS Configuration
+db_username       = "uitgo_admin"
+db_password       = "YourSecurePassword123!"
+db_instance_class = "db.t3.micro"
+
+# SQS Configuration
+sqs_queue_name = "location-history-queue"
+
+# API Gateway
+api_gateway_name = "uitgo-api"
+stage_name       = "prod"
+```
+
+### 8.5 Modules Terraform
+
+| Module | Mô tả |
+|--------|-------|
+| `modules/vpc` | VPC, Subnets, Internet Gateway, NAT Gateway |
+| `modules/security_group` | Security Groups cho RDS, EC2 |
+| `modules/rds` | PostgreSQL RDS instance |
+| `modules/sqs` | SQS Queue cho location history |
+| `modules/lambda_sqs_consumer` | Lambda function xử lý messages từ SQS |
+| `modules/api_gateway` | REST API Gateway |
+| `modules/iam` | IAM Roles và Policies |
+
+### 8.6 Dọn dẹp resources AWS
+
+```bash
+cd terraform
+terraform destroy
+```
+
+⚠️ **Lưu ý:** Sẽ xóa TẤT CẢ resources đã tạo trên AWS.
+
+---
+
+## 📊 9. Load Testing
+
+### 9.1 Cài đặt K6
+
+```bash
+# Windows (Chocolatey)
+choco install k6
+
+# macOS
+brew install k6
+
+# Linux
+sudo apt install k6
+```
+
+### 9.2 Chạy Load Tests
+
+```bash
+cd modules/driver-service/load-tests
+
+# Smoke Test (kiểm tra cơ bản)
+k6 run 01-smoke-test.js
+
+# Load Test (đo throughput)
+k6 run 02-load-test.js
+
+# Stress Test (tìm breaking point)
+k6 run 03-stress-test.js
+
+# Spike Test (kiểm tra đột biến)
+k6 run 04-spike-test.js
+
+# Soak Test (kiểm tra ổn định dài hạn)
+k6 run 05-soak-test.js
+
+# Capacity Test (xác định max capacity)
+k6 run 06-capacity-test.js
+```
+
+### 9.3 Kết quả Load Test
+
+| Test | Throughput | Success Rate | P95 Latency |
+|------|------------|--------------|-------------|
+| Smoke | 16 req/s | 100% | 9ms |
+| Load | **452 req/s** | 99.98% | 327ms |
+| Stress | 473 req/s | 87.34% | 29,999ms |
+| Soak | 487 req/s | **100%** | 480ms |
+
+Chi tiết: xem `modules/driver-service/load-tests/LOAD-TEST-REPORT.md`
+
+---
+
+## 📚 10. Tài liệu
+
+| File | Mô tả |
+|------|-------|
+| `docs/ARCHITECTURE.md` | Kiến trúc hệ thống tổng quan |
+| `docs/1-decide-microservices-architecture.md` | ADR: Microservices Architecture |
+| `docs/2-decide-redis-for-driver-location.md` | ADR: Redis cho vị trí tài xế |
+| `docs/3-decide-rest-over-grpc.md` | ADR: REST thay vì gRPC |
+| `docs/REPORT.md` | Báo cáo Module chuyên sâu |
+| `terraform/API_GATEWAY_SQS_GUIDE.md` | Hướng dẫn API Gateway + SQS |
+
+---
+
+✨ **UIT-Go - Cloud-Native Ride Hailing Platform**
+
+Được phát triển cho môn học SE360 - Điện toán đám mây @ UIT
