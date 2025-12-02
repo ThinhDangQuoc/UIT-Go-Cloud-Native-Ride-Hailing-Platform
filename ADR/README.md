@@ -23,4 +23,6 @@ Mỗi ADR tuân theo cấu trúc:
 ## 🔗 Tài liệu liên quan
 
 - [ARCHITECTURE.md](../docs/ARCHITECTURE.md) - Kiến trúc hệ thống tổng quan
+- [DATAFLOW.md](../docs/DATAFLOW.md) - Dataflow diagrams chi tiết (Mermaid)
 - [REPORT.md](../docs/REPORT.md) - Báo cáo module chuyên sâu
+- [FINAL-REPORT-DRIVER-LOCATION.md](../docs/FINAL-REPORT-DRIVER-LOCATION.md) - Báo cáo tổng hợp Driver Location

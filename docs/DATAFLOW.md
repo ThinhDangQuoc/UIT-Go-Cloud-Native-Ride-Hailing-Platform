@@ -590,4 +590,4 @@ stateDiagram-v2
 ---
 
 *Tài liệu được duy trì bởi SE360 Team - UIT-Go Project*  
-*Cập nhật lần cuối: 2025-12-02*
+*Cập nhật lần cuối: 2025-11-29*

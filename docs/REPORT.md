@@ -3,7 +3,8 @@
 **Môn học:** SE360 - Điện toán đám mây  
 **Dự án:** UIT-Go Ride Hailing Platform  
 **Module:** A - Driver Location Updates  
-**Nhóm:** [Tên nhóm]
+**Nhóm:** SE360 Team (Hồ Nhật Thành, Đặng Quốc Thịnh, Tạ Ngọc Thành)  
+**Ngày cập nhật:** 2025-11-29
 
 ---
 

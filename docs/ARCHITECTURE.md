@@ -306,7 +306,7 @@ Thiết kế Kiến trúc cho Scalability & Performance
 | **Project Name** | UIT-Go |
 | **Primary Contact** | Hồ Nhật Thành - Đặng Quốc Thịnh - Tạ Ngọc Thành |
 | **Team / Course** | SE360 - Software Engineering (UIT) |
-| **Date of Last Update** | 2025-10-29 |
+| **Date of Last Update** | 2025-11-29 |
 
 ---
 
@@ -323,4 +323,4 @@ Thiết kế Kiến trúc cho Scalability & Performance
 
 ---
 
-👉 *End of Document — maintained by Hồ Nhật Thành, SE360 - UIT-Go Project.*
+👉 *End of Document — maintained by SE360 Team, UIT-Go Project.*

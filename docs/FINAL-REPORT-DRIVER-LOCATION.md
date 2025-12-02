@@ -300,9 +300,10 @@ driver-redis:
 
 ### 5.1 Architecture Decision Records
 
-1. **ADR-001**: [Microservices Architecture](../docs/1-decide-microservices-architecture.md)
-2. **ADR-002**: [Redis for Driver Location](../docs/2-decide-redis-for-driver-location.md)
-3. **ADR-003**: [REST over gRPC](../docs/3-decide-rest-over-grpc.md)
+1. **ADR-001**: [Microservices Architecture](../ADR/1-decide-microservices-architecture.md)
+2. **ADR-002**: [Redis for Driver Location](../ADR/2-decide-redis-for-driver-location.md)
+3. **ADR-003**: [REST over gRPC](../ADR/3-decide-rest-over-grpc.md)
+4. **ADR-004**: [Driver Location Streaming Architecture](../ADR/4-driver-location-streaming-architecture.md)
 
 ### 5.2 Implementation Files
 
@@ -346,6 +347,6 @@ driver-redis:
 
 ---
 
-**Tác giả**: GitHub Copilot  
-**Ngày**: 2025  
+**Tác giả**: SE360 Team - UIT (Hồ Nhật Thành, Đặng Quốc Thịnh, Tạ Ngọc Thành)  
+**Ngày**: 2025-11-29  
 **Version**: 1.0
