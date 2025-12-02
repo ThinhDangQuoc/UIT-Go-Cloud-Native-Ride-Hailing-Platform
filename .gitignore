@@ -47,3 +47,28 @@ docker-compose.override.yml
 Thumbs.db
 .idea/
 .vscode/
+
+# -------------------------
+# LocalStack (local AWS)
+# -------------------------
+localstack/cache/
+localstack/logs/
+
+# -------------------------
+# Terraform additional
+# -------------------------
+**/tfplan
+terraform_temp/
+
+# -------------------------
+# Load test results
+# -------------------------
+**/load-tests/results/
+*.html
+
+# -------------------------
+# SSL/Certificate files
+# -------------------------
+*.pem
+*.pem.*
+*.pickle

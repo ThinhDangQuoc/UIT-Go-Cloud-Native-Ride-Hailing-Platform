@@ -10,6 +10,57 @@ UIT-Go là đồ án mô phỏng hệ thống gọi xe (Grab/Uber) được thi�
 
 ---
 
+## 🏗️ Kiến Trúc Hệ Thống
+
+```mermaid
+flowchart TB
+    subgraph Clients ["📱 Clients"]
+        PA[Hành Khách App]
+        DA[Tài Xế App]
+    end
+
+    subgraph Gateway ["🚪 API Gateway"]
+        AG[API Gateway<br/>Express.js :8080]
+    end
+
+    subgraph Services ["⚙️ Microservices"]
+        US[User Service<br/>:8081]
+        DS[Driver Service<br/>:8082]
+        TS[Trip Service<br/>:8083]
+    end
+
+    subgraph DataStores ["💾 Data Stores"]
+        PG_USER[(PostgreSQL<br/>Users)]
+        PG_TRIP[(PostgreSQL<br/>Trips)]
+        REDIS[(Redis<br/>Geo + Stream)]
+    end
+
+    subgraph AWS ["☁️ AWS Services"]
+        SQS[[SQS Queue]]
+        LAMBDA[Lambda<br/>Batch Writer]
+        PG_HIST[(PostgreSQL<br/>Location History)]
+    end
+
+    PA --> AG
+    DA --> AG
+    AG --> US
+    AG --> DS
+    AG --> TS
+
+    US --> PG_USER
+    DS --> REDIS
+    DS --> SQS
+    TS --> PG_TRIP
+    TS -.->|REST| DS
+
+    SQS --> LAMBDA
+    LAMBDA --> PG_HIST
+```
+
+📚 **Xem chi tiết các luồng dữ liệu:** [docs/DATAFLOW.md](docs/DATAFLOW.md)
+
+---
+
 ## ⚙️ 1. Yêu cầu môi trường
 
 - Docker ≥ 24.x  
@@ -60,6 +111,7 @@ uit-go/
 │
 ├── docs/                        # Tài liệu kỹ thuật
 │   ├── ARCHITECTURE.md          # Kiến trúc hệ thống tổng quan
+│   ├── DATAFLOW.md              # Dataflow diagrams (Mermaid)
 │   ├── REPORT.md                # Báo cáo module chuyên sâu
 │   └── *.md                     # Các tài liệu bổ sung
 │
