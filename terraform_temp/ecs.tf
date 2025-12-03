@@ -20,7 +20,7 @@ resource "aws_ecs_task_definition" "user_service" {
 
   container_definitions = jsonencode([{
     name  = "user-service"
-    image = "your-dockerhub-username/user-service:latest" # ⚠️ Thay bằng ảnh Docker của bạn
+    image = "thinhdan905/uit-go-user-service:latest" # ⚠️ Thay bằng ảnh Docker của bạn
     essential = true
     
     # Port mapping: Container lắng nghe ở cổng 8081 (như trong .env của bạn)
@@ -94,7 +94,7 @@ resource "aws_ecs_task_definition" "driver_service" {
 
   container_definitions = jsonencode([{
     name  = "driver-service"
-    image = "your-dockerhub-username/driver-service:latest" # Thay bằng image của bạn
+    image = "thinhdan905/uit-go-driver-service:latest" # Thay bằng image của bạn
     portMappings = [{
       containerPort = 8082
       hostPort      = 8082
@@ -166,7 +166,7 @@ resource "aws_ecs_task_definition" "trip_service" {
   
   container_definitions = jsonencode([{
     name  = "trip-service"
-    image = "your-dockerhub/trip-service:latest"
+    image = "thinhdan905/uit-go-trip-service:latest"
     portMappings = [{ 
         containerPort = 8083 
         hostPort      = 8083
@@ -244,7 +244,7 @@ resource "aws_ecs_task_definition" "api_gateway" {
 
   container_definitions = jsonencode([{
     name  = "api-gateway"
-    image = "your-dockerhub-username/api-gateway:latest"
+    image = "thinhdan905/uit-go-api-gateway:latest"
     portMappings = [{
       containerPort = 8080
       hostPort      = 8080

@@ -20,7 +20,7 @@ resource "aws_security_group" "db_sg" {
 resource "aws_db_instance" "postgres" {
   identifier             = "${var.project_name}-db"
   engine                 = "postgres"
-  engine_version         = "15.8"
+  engine_version         = "15.10"
   instance_class         = "db.t3.micro" # Free tier
   allocated_storage      = 20
   db_name                = "uitgo"
