@@ -4,7 +4,7 @@ services:
     image: postgres:15
     container_name: user-db
     env_file:
-      - ./modules/user-service/.env
+      - ./env/user-service.env
     restart: always
     environment:
       - POSTGRES_HOST_AUTH_METHOD=trust
@@ -30,10 +30,10 @@ services:
       - uitgo-net
 
   user-service:
-    build: ./modules/user-service
+    build: ../services/user-service
     container_name: user-service
     env_file:
-      - ./modules/user-service/.env
+      - ./env/user-service.env
     ports:
       - "8081:8081"
     depends_on:
@@ -49,7 +49,7 @@ services:
     image: postgres:15
     container_name: driver-db
     env_file:
-      - ./modules/driver-service/.env
+      - ./env/driver-service.env
     restart: always
     environment:
       - POSTGRES_HOST_AUTH_METHOD=trust
@@ -84,7 +84,7 @@ services:
       - uitgo-net
 
   driver-service:
-    build: ./modules/driver-service
+    build: ../services/driver-service
     deploy:
       mode: replicated
       replicas: 4
@@ -93,7 +93,7 @@ services:
           cpus: '0.5'
           memory: 512M
     env_file:
-      - ./modules/driver-service/.env
+      - ./env/driver-service.env
     ports:
       - "8084-8087:8082"
     depends_on:
@@ -120,7 +120,7 @@ services:
     image: postgres:15
     container_name: trip-db
     env_file:
-      - ./modules/trip-service/.env
+      - ./env/trip-service.env
     restart: always
     environment:
       - POSTGRES_HOST_AUTH_METHOD=trust
@@ -137,10 +137,10 @@ services:
       retries: 5
 
   trip-service:
-    build: ./modules/trip-service
+    build: ../services/trip-service
     container_name: trip-service
     env_file:
-      - ./modules/trip-service/.env
+      - ./env/trip-service.env
     ports:
       - "8083:8083"
     depends_on:
@@ -157,10 +157,10 @@ services:
 
   # --- API GATEWAY ---
   api-gateway:
-    build: ./modules/api-gateway
+    build: ../services/api-gateway
     container_name: api-gateway
     env_file:
-      - ./modules/api-gateway/.env
+      - ./env/api-gateway.env
     ports:
       - "8080:8080"
     depends_on:
@@ -180,13 +180,14 @@ services:
     container_name: localstack
     environment:
       - LOCALSTACK_SERVICES=sqs
-      - DEBUG=1
+      - DEBUG=0
+      - LS_LOG=warn
       - AWS_DEFAULT_REGION=us-east-1
       - EAGER_SERVICE_LOADING=1
     ports:
       - "4566:4566"
     volumes:
-      - ./infrastructure/localstack/init-sqs.sh:/etc/localstack/init/ready.d/init-sqs.sh
+      - ../infra/localstack/init-sqs.sh:/etc/localstack/init/ready.d/init-sqs.sh
     healthcheck:
       test: ["CMD", "awslocal", "sqs", "list-queues"]
       interval: 5s

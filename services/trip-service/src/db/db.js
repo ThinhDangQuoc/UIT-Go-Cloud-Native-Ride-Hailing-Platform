@@ -40,13 +40,13 @@ export const db = {
   
   // Explicit WRITE → RDS Master
   write: async (text, params) => {
-    console.log(`📝 [WRITE] → Master: ${text.substring(0, 50)}...`);
+    //console.log(`📝 [WRITE] → Master: ${text.substring(0, 50)}...`);
     return writePool.query(text, params);
   },
   
   // Explicit READ → RDS Replica
   read: async (text, params) => {
-    console.log(`📖 [READ] → Replica: ${text.substring(0, 50)}...`);
+    //console.log(`📖 [READ] → Replica: ${text.substring(0, 50)}...`);
     return readPool.query(text, params);
   },
   

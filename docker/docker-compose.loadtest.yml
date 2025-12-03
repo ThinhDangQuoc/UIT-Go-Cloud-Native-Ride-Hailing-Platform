@@ -60,7 +60,7 @@ services:
 
   # DRIVER SERVICE - Instance 1 (Leader)
   driver-service-1:
-    build: ./modules/driver-service
+    build: ./services/driver-service
     container_name: driver-service-1
     environment:
       - PORT=8082
@@ -90,7 +90,7 @@ services:
 
   # DRIVER SERVICE - Instance 2
   driver-service-2:
-    build: ./modules/driver-service
+    build: ./services/driver-service
     container_name: driver-service-2
     environment:
       - PORT=8082
@@ -120,7 +120,7 @@ services:
 
   # DRIVER SERVICE - Instance 3
   driver-service-3:
-    build: ./modules/driver-service
+    build: ./services/driver-service
     container_name: driver-service-3
     environment:
       - PORT=8082

@@ -10,9 +10,6 @@ RUN npm install --production
 # Copy source code
 COPY src ./src
 
-# Copy environment file if needed
-COPY .env ./
-
 EXPOSE 8080
 
 # Performance settings

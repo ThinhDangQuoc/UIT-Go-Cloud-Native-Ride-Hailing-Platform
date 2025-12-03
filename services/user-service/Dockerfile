@@ -10,9 +10,6 @@ RUN npm install
 # Copy source code
 COPY src ./src
 
-# Copy environment file if needed
-COPY .env ./
-
 EXPOSE 8081
 
 CMD ["npm", "start"]
