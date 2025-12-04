@@ -17,25 +17,12 @@ const sqsClient = new SQSClient({
 const QUEUE_NAME = process.env.SQS_TRIP_QUEUE_NAME || "trip-events";
 let queueUrlCache = null;
 
-// Hàm lấy Queue URL động (để tránh hardcode account ID của LocalStack)
-async function getQueueUrl() {
-  if (queueUrlCache) return queueUrlCache;
-  
-  try {
-    const command = new GetQueueUrlCommand({ QueueName: QUEUE_NAME });
-    const response = await sqsClient.send(command);
-    queueUrlCache = response.QueueUrl;
-    return queueUrlCache;
-  } catch (error) {
-    console.error("❌ [TripService] Error getting Queue URL:", error);
-    throw error;
-  }
-}
+const QUEUE_URL = process.env.SQS_QUEUE_URL || "http://localstack:4566/000000000000/trip-events";
 
 // Hàm gửi Job (Offer chuyến đi)
 export const pushTripOfferJob = async (tripData) => {
   try {
-    const queueUrl = await getQueueUrl();
+    const queueUrl = QUEUE_URL;
     
     const payload = {
       type: "TRIP_OFFER", // Định danh loại sự kiện

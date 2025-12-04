@@ -1,19 +1,19 @@
 docker login
 
 # 1. Build & Push User Service
-docker build -t thinhdan905/uit-go-user-service ./modules/user-service
+docker build -t thinhdan905/uit-go-user-service ../../services/user-service
 docker push thinhdan905/uit-go-user-service
 
 # 2. Build & Push Driver Service
-docker build -t thinhdan905/uit-go-driver-service ./modules/driver-service
+docker build -t thinhdan905/uit-go-driver-service ../../services/driver-service
 docker push thinhdan905/uit-go-driver-service
 
 # 3. Build & Push Trip Service
-docker build -t thinhdan905/uit-go-trip-service ./modules/trip-service
+docker build -t thinhdan905/uit-go-trip-service ../../services/trip-service
 docker push thinhdan905/uit-go-trip-service
 
 # 4. Build & Push API Gateway
-docker build -t thinhdan905/uit-go-api-gateway ./modules/api-gateway
+docker build -t thinhdan905/uit-go-api-gateway ../../services/api-gateway
 docker push thinhdan905/uit-go-api-gateway
 
 aws configure

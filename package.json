@@ -1,6 +1,0 @@
-{
-  "dependencies": {
-    "ioredis": "^5.8.2",
-    "socket.io-client": "^4.8.1"
-  }
-}
