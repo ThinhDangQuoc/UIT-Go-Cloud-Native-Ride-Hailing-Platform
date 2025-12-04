@@ -1,3 +1,5 @@
+cd infra/terraform
+
 docker login
 
 # 1. Build & Push User Service
@@ -15,6 +17,21 @@ docker push thinhdan905/uit-go-trip-service
 # 4. Build & Push API Gateway
 docker build -t thinhdan905/uit-go-api-gateway ../../services/api-gateway
 docker push thinhdan905/uit-go-api-gateway
+
+aws ecs update-service \
+  --cluster uit-go-cluster \
+  --service user-service \
+  --force-new-deployment
+
+aws ecs update-service \
+  --cluster uit-go-cluster \
+  --service driver-service \
+  --force-new-deployment
+
+aws ecs update-service \
+  --cluster uit-go-cluster \
+  --service trip-service \
+  --force-new-deployment
 
 aws configure
 # Nhập AWS Access Key ID, Secret Access Key, Region (vd: us-east-1)

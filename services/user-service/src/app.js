@@ -7,13 +7,14 @@ import { initDB } from "./db/init.js";           // Hàm khởi tạo bảng tro
 // Khởi tạo ứng dụng Express
 const app = express();
 
-// Middleware
-
 // Cho phép CORS để client (frontend) có thể gọi API từ domain khác
 app.use(cors());
 
 // Cho phép Express tự động parse JSON trong request body
 app.use(express.json());
+
+app.get('/', (req, res) => res.status(200).send('OK'));
+app.get('/health', (req, res) => res.status(200).send('OK'));
 
 // Đăng ký route cho API — mọi endpoint sẽ bắt đầu bằng /api
 app.use("/api", userRoutes);

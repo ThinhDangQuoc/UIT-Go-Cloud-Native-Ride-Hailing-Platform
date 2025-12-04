@@ -101,8 +101,13 @@ resource "aws_lb_target_group" "driver_service" {
   target_type = "ip"
   vpc_id      = aws_vpc.main.id
   health_check { 
-    path = "/"
-    matcher = "200-499" 
+    path = "/health"
+    port                = "traffic-port"
+    healthy_threshold   = 2
+    unhealthy_threshold = 3
+    timeout             = 5
+    interval            = 30
+    matcher             = "200"
   }
 }
 
@@ -114,8 +119,13 @@ resource "aws_lb_target_group" "trip_service" {
   target_type = "ip"
   vpc_id      = aws_vpc.main.id
   health_check { 
-    path = "/"
-    matcher = "200-499" 
+    path = "/health"
+    port                = "traffic-port"
+    healthy_threshold   = 2
+    unhealthy_threshold = 3
+    timeout             = 5
+    interval            = 30
+    matcher             = "200"
   }
 }
 
@@ -127,8 +137,13 @@ resource "aws_lb_target_group" "user_service" {
   target_type = "ip"
   vpc_id      = aws_vpc.main.id
   health_check { 
-    path = "/"
-    matcher = "200-499" 
+    path = "/health"
+    port                = "traffic-port"
+    healthy_threshold   = 2
+    unhealthy_threshold = 3
+    timeout             = 5
+    interval            = 30
+    matcher             = "200" 
   }
 }
 

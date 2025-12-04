@@ -7,7 +7,7 @@ const { Pool } = pg; // Lấy lớp Pool từ thư viện pg, dùng để tạo 
 // Kiểm tra môi trường: Nếu là 'production' (trên ECS) thì bắt buộc dùng SSL
 const dbHost = process.env.POSTGRES_WRITE_HOST || process.env.POSTGRES_HOST || "trip-db";
 const isRDS = dbHost.includes("amazonaws.com");
-const isProduction = process.env.NODE_ENV === "production";
+const isProduction = process.env.ENV === "production";
 
 const sslConfig = (isProduction || isRDS)
   ? { rejectUnauthorized: false } // Chấp nhận chứng chỉ RDS (Self-signed/AWS CA)

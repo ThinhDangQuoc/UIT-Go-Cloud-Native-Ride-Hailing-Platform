@@ -110,24 +110,25 @@ resource "aws_ecs_task_definition" "driver_service" {
       hostPort      = 8082
     }]
     environment = [
-      { name = "PORT", value = "8082" },
-      { name = "REDIS_HOST", value = aws_elasticache_cluster.redis.cache_nodes[0].address },
-      { name = "SQS_ENDPOINT", value = "https://sqs.${var.aws_region}.amazonaws.com" }, # AWS thật ko dùng localstack
-      { name = "SQS_TRIP_QUEUE_NAME", value = aws_sqs_queue.trip_events.name },
-      { name = "TRIP_SERVICE_URL", value = "http://${aws_lb.internal.dns_name}/api" },
-      { name = "AWS_REGION", value = var.aws_region },
+      { name = "PORT",                  value = "8082" },
+      { name = "ENV",                   value = "production" },
+      { name = "REDIS_HOST",            value = aws_elasticache_cluster.redis.cache_nodes[0].address },
+      { name = "SQS_ENDPOINT",          value = "https://sqs.${var.aws_region}.amazonaws.com" }, # AWS thật ko dùng localstack
+      { name = "SQS_TRIP_QUEUE_NAME",   value = aws_sqs_queue.trip_events.name },
+      { name = "TRIP_SERVICE_URL",      value = "http://${aws_lb.internal.dns_name}/api" },
+      { name = "AWS_REGION",            value = var.aws_region },
 
       # 2. Database (PostgreSQL - RDS)
       # Terraform tự động lấy endpoint từ RDS resource
-      { name = "POSTGRES_HOST",     value = split(":", aws_db_instance.postgres.endpoint)[0] },
-      { name = "POSTGRES_PORT",     value = "5432" },
-      { name = "POSTGRES_USER",     value = aws_db_instance.postgres.username },
-      { name = "POSTGRES_DB",       value = "driver_db" },
+      { name = "POSTGRES_HOST",         value = split(":", aws_db_instance.postgres.endpoint)[0] },
+      { name = "POSTGRES_PORT",         value = "5432" },
+      { name = "POSTGRES_USER",         value = aws_db_instance.postgres.username },
+      { name = "POSTGRES_DB",           value = "driver_db" },
 
       # 3. Redis (ElastiCache)
       # Lấy địa chỉ node đầu tiên của cụm Redis
-      { name = "REDIS_HOST",        value = aws_elasticache_cluster.redis.cache_nodes[0].address },
-      { name = "REDIS_PORT",        value = "6379" }
+      { name = "REDIS_HOST",            value = aws_elasticache_cluster.redis.cache_nodes[0].address },
+      { name = "REDIS_PORT",            value = "6379" }
     ]
 
     secrets = [
@@ -191,8 +192,8 @@ resource "aws_ecs_task_definition" "trip_service" {
     }]
     environment = [
       # 1. Application Config
-      { name = "PORT",              value = "8083" },
-      { name = "NODE_ENV",          value = "production" },
+      { name = "PORT",                value = "8083" },
+      { name = "ENV",                 value = "production" },
       
       # 2. Database (RDS PostgreSQL)
       # Terraform tự động lấy endpoint từ resource RDS. Dùng split để tách 'host:port' lấy host

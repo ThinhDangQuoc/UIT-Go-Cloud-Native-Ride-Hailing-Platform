@@ -6,7 +6,7 @@ const { Pool } = pg; // Lấy lớp Pool từ thư viện pg, dùng để tạo 
 
 const dbHost = process.env.POSTGRES_HOST || "user-db";
 const isRDS = dbHost.includes("amazonaws.com");
-const isProduction = process.env.NODE_ENV === "production";
+const isProduction = process.env.ENV === "production";
 
 const sslConfig = (isProduction || isRDS)
   ? { rejectUnauthorized: false } 

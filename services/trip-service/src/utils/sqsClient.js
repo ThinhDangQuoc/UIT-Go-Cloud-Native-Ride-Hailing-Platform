@@ -1,54 +1,56 @@
 // trip-service/src/utils/sqsclient.js
-import { SQSClient, CreateQueueCommand, GetQueueUrlCommand} from "@aws-sdk/client-sqs";
+import { SQSClient} from "@aws-sdk/client-sqs";
 
 const REGION = process.env.AWS_REGION || "us-east-1";
 const SQS_ENDPOINT = process.env.SQS_ENDPOINT || "http://localstack:4566"; // localstack endpoint in docker-compose
 const QUEUE_NAME = process.env.SQS_TRIP_QUEUE_NAME || "trip-events";
 
-let sqsClient;
-let queueUrl;
+const isLocal = SQS_ENDPOINT && SQS_ENDPOINT.includes("localstack");
 
-/**
- * Initialize SQS client and ensure queue exists.
- * Call this early on TripService startup.
- */
-export async function initSqs() {
-  if (sqsClient) return;
+console.log(`🔌 [SQS Client] Init. Endpoint: ${SQS_ENDPOINT} | Local: ${isLocal}`);
 
-  sqsClient = new SQSClient({
-    region: REGION,
-    endpoint: SQS_ENDPOINT,
-    disableHostPrefix: true,
-    forcePathStyle: true,
-    apiVersion: "2012-11-05",
-    credentials: {
-      accessKeyId: process.env.AWS_ACCESS_KEY_ID || "test",
-      secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || "test",
-    },
-  });
+const clientConfig = {
+  region: REGION,
+  endpoint: SQS_ENDPOINT,
+};
 
-  // Try to get queue URL, or create the queue
-  try {
-    const getRes = await sqsClient.send(new GetQueueUrlCommand({ QueueName: QUEUE_NAME }));
-    queueUrl = getRes.QueueUrl;
-    console.log(`[SQS] Found queue ${QUEUE_NAME} -> ${queueUrl}`);
-  } catch (err) {
-    if (err.name && (err.name === "QueueDoesNotExist" || err.$metadata?.httpStatusCode === 404)) {
-      console.log(`[SQS] Queue ${QUEUE_NAME} not found. Creating...`);
-      const createRes = await sqsClient.send(
-        new CreateQueueCommand({
-          QueueName: QUEUE_NAME,
-          Attributes: {
-            VisibilityTimeout: "30",
-            ReceiveMessageWaitTimeSeconds: "0"
-          }
-        })
-      );
-      queueUrl = createRes.QueueUrl;
-      console.log(`[SQS] Created queue ${QUEUE_NAME} -> ${queueUrl}`);
-    } else {
-      console.error("[SQS] init error:", err);
-      throw err;
-    }
-  }
+// 👇 QUAN TRỌNG: Chỉ dùng Credentials giả khi chạy LocalStack
+if (isLocal) {
+  clientConfig.credentials = {
+    accessKeyId: "test",
+    secretAccessKey: "test",
+  };
 }
+
+export const sqsClient = new SQSClient(clientConfig);
+
+function getQueueUrl() {
+  // Nếu là LocalStack: http://localstack:4566/000000000000/queue-name
+  if (isLocal) {
+    let baseUrl = SQS_ENDPOINT.replace("localhost", "localstack"); // Fix docker networking nếu cần
+    if (baseUrl.endsWith("/")) baseUrl = baseUrl.slice(0, -1);
+    return `${baseUrl}/000000000000/${QUEUE_NAME}`;
+  }
+
+  // Nếu là AWS thật: Ưu tiên dùng biến môi trường chứa FULL URL
+  if (process.env.SQS_QUEUE_URL) {
+      return process.env.SQS_QUEUE_URL;
+  }
+  
+  // Fallback cho AWS (Chỉ hoạt động nếu SQS_ENDPOINT là endpoint chung của vùng)
+  // Ví dụ: https://sqs.us-east-1.amazonaws.com/123456789012/trip-events
+  const accountId = process.env.AWS_ACCOUNT_ID;
+  if (accountId) {
+      return `${SQS_ENDPOINT}/${accountId}/${QUEUE_NAME}`;
+  }
+
+  // Nếu không có thông tin gì, trả về endpoint gốc (có thể lỗi)
+  console.warn("⚠️ [SQS] Warning: Cannot construct full Queue URL. Please set SQS_QUEUE_URL env var.");
+  return SQS_ENDPOINT; 
+}
+
+export async function initSqs() {
+  const url = getQueueUrl();
+  console.log(`✅ [SQS] Initialized. Queue URL: ${url}`);
+}
+

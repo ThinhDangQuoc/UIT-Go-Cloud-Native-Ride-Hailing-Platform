@@ -1,5 +1,5 @@
 // path: trip-service/utils/tripSqs.js
-import { SQSClient, SendMessageCommand, GetQueueUrlCommand } from "@aws-sdk/client-sqs";
+import { SQSClient, SendMessageCommand} from "@aws-sdk/client-sqs";
 import dotenv from "dotenv";
 
 dotenv.config();
@@ -13,9 +13,6 @@ const sqsClient = new SQSClient({
     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || "test",
   },
 });
-
-const QUEUE_NAME = process.env.SQS_TRIP_QUEUE_NAME || "trip-events";
-let queueUrlCache = null;
 
 const QUEUE_URL = process.env.SQS_QUEUE_URL || "http://localstack:4566/000000000000/trip-events";
 
