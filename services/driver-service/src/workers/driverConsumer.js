@@ -69,7 +69,8 @@ export async function startDriverConsumer(io) {
             const { tripId, pickupLat, pickupLng } = body.data;
 
             console.log(`🔍 [DriverConsumer] Processing Job ${tripId}. Remaining time: ${remainingTime}ms`);
-
+            
+            console.log(`   📍 Searching near: Lat=${pickupLat}, Lng=${pickupLng}`);
             // Tìm tài xế gần đó
             if (pickupLat && pickupLng) {
                const nearbyDriverIds = await redis.georadius(

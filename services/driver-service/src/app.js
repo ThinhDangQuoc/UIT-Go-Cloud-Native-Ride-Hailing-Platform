@@ -109,7 +109,7 @@ async function checkRedisConnection() {
   }
 }
 
-app.listen(PORT, async () => {
+server.listen(PORT, async () => {
   await checkRedisConnection();
   console.log(`🚗 DriverService running on port ${PORT}`);
 });
