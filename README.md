@@ -73,11 +73,18 @@ flowchart TB
 
 ```
 uit-go/
-├── docker-compose.yml           # Orchestrate all microservices
-├── docker-compose.loadtest.yml  # Load testing configuration
 ├── README.md                    # Tài liệu hướng dẫn chính
 │
-├── modules/
+├── docker/                      # Docker compose configuration
+│   ├── docker-compose.yml       # Orchestrate all microservices
+│   ├── docker-compose.loadtest.yml  # Load testing configuration
+│   └── env/                     # Environment files for services
+│       ├── api-gateway.env
+│       ├── driver-service.env
+│       ├── trip-service.env
+│       └── user-service.env
+│
+├── services/                    # Microservices implementation
 │   ├── user-service/            # Quản lý người dùng, xác thực JWT
 │   │   ├── src/
 │   │   ├── Dockerfile
@@ -85,6 +92,7 @@ uit-go/
 │   ├── driver-service/          # Quản lý tài xế, vị trí GPS
 │   │   ├── src/
 │   │   ├── load-tests/          # K6 load testing scripts
+│   │   ├── tests/
 │   │   ├── Dockerfile
 │   │   └── package.json
 │   ├── trip-service/            # Quản lý chuyến đi
@@ -96,26 +104,52 @@ uit-go/
 │       ├── Dockerfile
 │       └── package.json
 │
-├── terraform/                   # Infrastructure as Code (AWS)
-│   ├── main.tf                  # Main Terraform configuration
-│   ├── variables.tf             # Input variables
-│   ├── outputs.tf               # Output values
-│   └── modules/
-│       ├── vpc/                 # VPC, Subnets, Internet Gateway
-│       ├── rds/                 # PostgreSQL RDS
-│       ├── sqs/                 # SQS Queue
-│       ├── api_gateway/         # REST API Gateway
-│       ├── lambda_sqs_consumer/ # Lambda function
-│       ├── security_group/      # Security Groups
-│       └── iam/                 # IAM Roles & Policies
+├── modules/                     # Service modules (duplicate structure)
+│   ├── user-service/
+│   ├── driver-service/
+│   ├── trip-service/
+│   └── api-gateway/
+│
+├── infra/                       # Infrastructure as Code
+│   ├── terraform/               # Terraform configuration (AWS)
+│   │   ├── main.tf              # Main Terraform configuration
+│   │   ├── variables.tf         # Input variables
+│   │   ├── outputs.tf           # Output values
+│   │   ├── provider.tf          # Provider configuration
+│   │   ├── vpc.tf               # VPC configuration
+│   │   ├── rds.tf               # RDS PostgreSQL
+│   │   ├── sqs.tf               # SQS Queue
+│   │   ├── ecs.tf               # ECS configuration
+│   │   ├── alb.tf               # Application Load Balancer
+│   │   ├── redis.tf             # ElastiCache Redis
+│   │   ├── iam.tf               # IAM Roles & Policies
+│   │   ├── waf.tf               # Web Application Firewall
+│   │   ├── autoscaling.tf       # Auto Scaling configuration
+│   │   ├── secrets.tf           # Secrets Manager
+│   │   ├── db_init.tf           # Database initialization
+│   │   └── scripts/
+│   │       └── init.sql
+│   └── localstack/              # LocalStack initialization
+│       └── init-sqs.sh
+│
+├── localstack/                  # LocalStack cache and logs
+│   ├── cache/
+│   └── logs/
+│
+├── scripts/                     # Utility scripts
+│   ├── commands.txt
+│   └── nginx-loadtest.conf
 │
 ├── docs/                        # Tài liệu kỹ thuật
-│   ├── ARCHITECTURE.md          # Kiến trúc hệ thống tổng quan
-│   ├── DATAFLOW.md              # Dataflow diagrams (Mermaid)
-│   ├── REPORT.md                # Báo cáo module chuyên sâu
-│   └── *.md                     # Các tài liệu bổ sung
+│   ├── architecture/
+│   │   ├── ARCHITECTURE.md      # Kiến trúc hệ thống tổng quan
+│   │   └── DATAFLOW.md          # Dataflow diagrams (Mermaid)
+│   └── reports/
+│       ├── REPORT.md            # Báo cáo module chuyên sâu
+│       └── FINAL-REPORT-DRIVER-LOCATION.md
 │
 └── ADR/                         # Architectural Decision Records
+    ├── README.md
     ├── 1-decide-microservices-architecture.md
     ├── 2-decide-redis-for-driver-location.md
     ├── 3-decide-rest-over-grpc.md
