@@ -72,6 +72,7 @@ export async function startDriverConsumer(io) {
             
             console.log(`   📍 Searching near: Lat=${pickupLat}, Lng=${pickupLng}`);
             // Tìm tài xế gần đó
+
             if (pickupLat && pickupLng) {
                const nearbyDriverIds = await redis.georadius(
                   KEYS.DRIVERS_LOCATIONS, parseFloat(pickupLng), parseFloat(pickupLat), 5, 'km'

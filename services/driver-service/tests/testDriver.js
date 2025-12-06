@@ -1,7 +1,7 @@
 import { io } from "socket.io-client";
 
 // Cấu hình
-const DRIVER_SERVICE_URL = "http://localhost:8082";
+const DRIVER_SERVICE_URL = "http://localhost:8084";
 const DRIVER_ID = 101; // ID tài xế giả định
 const INITIAL_LAT = 10.7769; // Chợ Bến Thành
 const INITIAL_LNG = 106.7009;

@@ -10,6 +10,8 @@ import driverRoutes from "./routes/driverRoutes.js";
 import redis, { KEYS } from "./utils/redis.js"; 
 import { startDriverConsumer } from "./workers/driverConsumer.js";
 import { startLocationBatchWorker } from "./workers/locationBatchWorker.js";
+import { locationBuffer } from "./utils/locationBuffer.js";
+import { initDB } from "./db/init.js";
 
 dotenv.config();
 
@@ -45,7 +47,7 @@ Promise.all([pubClient.connect(), subClient.connect()]).then(() => {
     // 1️⃣ Dành cho TÀI XẾ: Đăng ký nhận Offer
     socket.on("registerDriver", (driverId) => {
       socket.join(`driver:${driverId}`);
-      // console.log(`✅ Driver ${driverId} joined room driver:${driverId}`);
+      console.log(`✅ Driver ${driverId} joined room driver:${driverId}`);
     });
 
     // 2️⃣ Dành cho HÀNH KHÁCH: Theo dõi chuyến đi (User Story 3)
@@ -56,14 +58,39 @@ Promise.all([pubClient.connect(), subClient.connect()]).then(() => {
     });
 
     // 3️⃣ Dành cho TÀI XẾ: Gửi vị trí liên tục (User Story 4)
-    socket.on("driverLocationUpdate", async (data) => {
-      const { driverId, tripId, lat, lng } = data;
+    socket.on("driverLocationUpdate", async (rawData) => {
+      let data = rawData;
 
-      if (!driverId || !lat || !lng) return;
+      // 🛡️ FIX: Xử lý trường hợp Postman gửi chuỗi JSON thay vì Object
+      if (typeof rawData === "string") {
+        try {
+          data = JSON.parse(rawData);
+        } catch (e) {
+          console.error("❌ [DEBUG] Invalid JSON string received:", rawData);
+          return;
+        }
+      }
+
+      console.log(`📍 [DEBUG] Received driverLocationUpdate:`, data);
+      const { driverId, tripId, lat, lng } = data || {};
+
+      if (!driverId || !lat || !lng) {
+        console.error("❌ [DEBUG] Missing required fields in location update");
+        return;
+      }
 
       try {
         // A. Lưu vào Redis Geo (Để tìm xe)
-        await redis.geoadd(KEYS.DRIVERS_LOCATIONS, lng, lat, driverId);
+        locationBuffer.add({
+          driverId,
+          lat: parseFloat(lat),
+          lng: parseFloat(lng),
+          tripId,
+          heading: data.bearing || 0,
+          speed: data.speed || 0
+        });
+        console.log(`📥 Added to Buffer for Driver ${driverId}`);
+
         
         // B. Lưu vào Buffer (Để lưu lịch sử DB - Batch Worker xử lý)
         const logEntry = `${driverId}|${lat}|${lng}|${Date.now()}`;
@@ -81,7 +108,7 @@ Promise.all([pubClient.connect(), subClient.connect()]).then(() => {
             speed: data.speed || 0     // Tốc độ (nếu có)
           });
           // Debug nhẹ
-          // process.stdout.write(`📍 Streamed to trip:${tripId} > ${lat},${lng}\r`);
+          process.stdout.write(`📍 Streamed to trip:${tripId} > ${lat},${lng}\r`);
         }
 
       } catch (err) {
@@ -111,5 +138,6 @@ async function checkRedisConnection() {
 
 server.listen(PORT, async () => {
   await checkRedisConnection();
+  await initDB();
   console.log(`🚗 DriverService running on port ${PORT}`);
 });

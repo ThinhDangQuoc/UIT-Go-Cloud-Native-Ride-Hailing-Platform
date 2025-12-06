@@ -30,12 +30,6 @@ export async function updateDriverLocation(driverId, locationData) {
   const { lat, lng, heading, speed, accuracy, tripId } = locationData;
   const timestamp = Date.now();
 
-  // Check if we should skip this update (delta compression)
-  const shouldUpdate = await shouldProcessUpdate(driverId, lat, lng, heading);
-  if (!shouldUpdate) {
-    return { skipped: true, reason: 'delta_threshold_not_met' };
-  }
-
   const pipeline = redis.pipeline();
 
   // 1. Update GeoSet for spatial queries (GEORADIUS)

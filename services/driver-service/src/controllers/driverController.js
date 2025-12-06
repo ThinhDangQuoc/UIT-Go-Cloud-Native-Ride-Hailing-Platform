@@ -3,8 +3,6 @@ import redis, { KEYS } from "../utils/redis.js";
 import locationService from "../services/locationService.js";
 import { publishToHistoryQueue } from "../utils/sqsLocationClient.js";
 
-const TRIP_SERVICE_URL = process.env.TRIP_SERVICE_URL;
-
 /**
  * Cập nhật vị trí hiện tại của tài xế
  * Hỗ trợ cả single update và batch update (mỗi 2-3 giây)
