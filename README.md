@@ -9,6 +9,15 @@ UIT-Go là đồ án mô phỏng hệ thống gọi xe (Grab/Uber) được thi�
 - 🗄 **PostgreSQL** — CSDL riêng cho từng service
 
 ---
+## 🗺 Bản đồ tài liệu (Documentation Map)
+- Backend:
+    - [Xem chi tiết các Microservices](services/README.md): Cấu trúc code của Driver, Trip, User service.
+- DevOps:
+    - [Cấu hình Hạ tầng AWS](infra/terraform/README.md): Hướng dẫn Terraform, LocalStack, AWS SQS.
+    - [Docker Setup](docker/README.md): Chi tiết về Docker Compose và Environment Variables.
+- Architects:
+    - [Quyết định kiến trúc ADR](ADR/README.md): Tại sao chúng tôi chọn công nghệ này.
+---
 
 ## 🏗️ Kiến Trúc Hệ Thống
 
@@ -61,73 +70,83 @@ flowchart TB
 
 ---
 
-## ⚙️ 1. Yêu cầu môi trường
-
-- Docker ≥ 24.x  
-- Docker Compose ≥ 2.x  
-- Cổng trống: 8081, 8082, 8083, 5433–5435, 6379  
-
----
-
-## 📁 2. Cấu trúc thư mục
+## 📁 1. Cấu trúc thư mục
 
 ```
-uit-go/
-├── docker-compose.yml           # Orchestrate all microservices
-├── docker-compose.loadtest.yml  # Load testing configuration
-├── README.md                    # Tài liệu hướng dẫn chính
+UIT-GO/
 │
-├── modules/
-│   ├── user-service/            # Quản lý người dùng, xác thực JWT
-│   │   ├── src/
+├── ADR/                          # Architecture Decision Record – ghi lại các quyết định thiết kế hệ thống
+│
+├── docker/
+│   ├── env/                      # Chứa các file .env cho từng service chạy bằng Docker
+│   ├── docker-compose.loadtest.yml  # File docker-compose dùng riêng cho load test
+│   ├── docker-compose.yml        # File docker-compose chính để chạy toàn hệ thống
+│   └── README.md                 # Hướng dẫn sử dụng Docker
+│
+├── docs/                         # Tài liệu mô tả hệ thống, API, kiến trúc, biểu đồ…
+│
+├── infra/
+│   ├── localstack/               # Môi trường local giả lập AWS (S3, SQS, Lambda...)
+│   └── terraform/                # Hạ tầng AWS provisioning bằng Terraform
+│
+├── scripts/                      # Các script hỗ trợ (deploy, migrate database, init)
+│
+├── services/                     # Thư mục chứa toàn bộ microservices
+│   │
+│   ├── api-gateway/
+│   │   ├── src/                  # Mã nguồn API Gateway (routing, auth, rate limit...)
+│   │   ├── Dockerfile            # Cấu hình Docker cho API Gateway
+│   │   └── package.json          # Thông tin dependencies & scripts
+│   │
+│   ├── driver-service/
+│   │   ├── load-tests/           # Bộ kịch bản giúp kiểm thử tải cho driver-service
+│   │   ├── src/                  # Mã nguồn backend của Driver Service
+│   │   ├── tests/                # Unit test / integration test
+│   │   ├── Dockerfile            # Docker build cho Driver Service
+│   │   └── package.json
+│   │
+│   ├── trip-service/
+│   │   ├── src/                  # Mã nguồn xử lý logic chuyến đi (Trip)
 │   │   ├── Dockerfile
 │   │   └── package.json
-│   ├── driver-service/          # Quản lý tài xế, vị trí GPS
-│   │   ├── src/
-│   │   ├── load-tests/          # K6 load testing scripts
-│   │   ├── Dockerfile
-│   │   └── package.json
-│   ├── trip-service/            # Quản lý chuyến đi
-│   │   ├── src/
-│   │   ├── Dockerfile
-│   │   └── package.json
-│   └── api-gateway/             # API Gateway (Express.js)
-│       ├── src/
-│       ├── Dockerfile
-│       └── package.json
+│   │
+│   └── user-service/
+│       ├── src/                  # Mã nguồn xử lý logic người dùng (User)
+│       ├── Dockerfile            # Docker build cho user-service
+│       └── package.json          
 │
-├── terraform/                   # Infrastructure as Code (AWS)
-│   ├── main.tf                  # Main Terraform configuration
-│   ├── variables.tf             # Input variables
-│   ├── outputs.tf               # Output values
-│   └── modules/
-│       ├── vpc/                 # VPC, Subnets, Internet Gateway
-│       ├── rds/                 # PostgreSQL RDS
-│       ├── sqs/                 # SQS Queue
-│       ├── api_gateway/         # REST API Gateway
-│       ├── lambda_sqs_consumer/ # Lambda function
-│       ├── security_group/      # Security Groups
-│       └── iam/                 # IAM Roles & Policies
+├── .gitignore                    # File bỏ qua khi commit git
 │
-├── docs/                        # Tài liệu kỹ thuật
-│   ├── ARCHITECTURE.md          # Kiến trúc hệ thống tổng quan
-│   ├── DATAFLOW.md              # Dataflow diagrams (Mermaid)
-│   ├── REPORT.md                # Báo cáo module chuyên sâu
-│   └── *.md                     # Các tài liệu bổ sung
-│
-└── ADR/                         # Architectural Decision Records
-    ├── 1-decide-microservices-architecture.md
-    ├── 2-decide-redis-for-driver-location.md
-    ├── 3-decide-rest-over-grpc.md
-    └── 4-driver-location-streaming-architecture.md
+└── README.md                     # Mô tả chung toàn dự án
 ```
-
 ---
 
-## 🐳 3. Chạy toàn bộ hệ thống bằng Docker Compose
+## ⚙️ 2. Chạy toàn bộ hệ thống bằng Docker Compose
 
-Tại thư mục gốc:
+1. **Clone repo và vào thư mục docker**
 
+```bash
+git clone https://github.com/ThinhDangQuoc/UIT-Go-Cloud-Native-Ride-Hailing-Platform
+cd docker
+```
+
+2. **Tạo các file môi trường (copy từ template)**
+
+```bash
+cp env/example.user-service.env env/user-service.env
+cp env/example.driver-service.env env/driver-service.env
+cp env/example.trip-service.env env/trip-service.env
+cp env/example.api-gateway.env env/api-gateway.env
+```
+→ Sau đó chỉnh sửa các biến như DB password, JWT secret, v.v.
+
+3. **Build và khởi động toàn bộ hệ thống**
+
+```bash
+docker compose up --build
+```
+
+Hoặc chạy ở chế độ detached:
 ```bash
 docker compose up --build
 ```
@@ -139,6 +158,13 @@ Docker sẽ tự động:
   - `user-service` → http://localhost:8081
   - `driver-service` → http://localhost:8082
   - `trip-service` → http://localhost:8083
+
+
+4. **Kiểm tra trạng thái**
+```bash
+docker compose ps
+docker compose logs -f api-gateway
+```
 
 Khi thấy log:
 
@@ -153,202 +179,24 @@ Khi thấy log:
 
 ---
 
-## 🌐 4. API Endpoints
+## 🧰 3. Stack sử dụng
 
-### 🧍 User Service (http://localhost:8081/api)
-| Method | Endpoint | Mô tả |
-|--------|-----------|-------|
-| POST | `/users` | Đăng ký tài khoản |
-| POST | `/sessions` | Đăng nhập (nhận JWT) |
-| GET | `/users/me` | Lấy thông tin cá nhân |
-
----
-
-### 🚕 Trip Service (http://localhost:8083/api)
-| Method | Endpoint | Mô tả |
-|--------|-----------|-------|
-| POST | `/trips` | Tạo chuyến đi mới |
-| POST | `/trips/:id/cancel` | Hủy chuyến |
-| POST | `/trips/:id/complete` | Hoàn thành chuyến |
-| POST | `/trips/:id/review` | Đánh giá tài xế |
-| GET  | `/trips/:id` | Lấy thông tin chuyến |
-| POST | `/trips/:id/accept` | (DriverService gọi nội bộ) |
-| POST | `/trips/:id/reject` | (DriverService gọi nội bộ) |
+| Thành phần | Công nghệ | Mục đích
+|-------------|------------| ---------------- |
+| Runtime | Node.js | Môi trường chạy Javascript |
+| Framework | Express.js | Xây dựng RESTful API |
+| Database | PostgreSQL | Lưu trữ dữ liệu |
+| Cache / GeoIndex | Redis | Caching & Geo-spatial index (tìm xe gần nhất) |
+| Authentication | JWT | Xác thực người dùng |
+| Infra | Docker + Docker Compose | Containerization & Orchestration |
+| Communication | REST (Axios) | Giao tiếp giữa các service |
+| Realtime | Socket.IO (DriverService) | Cập nhật vị trí tài xế & thông báo chuyến đi |
+| Message Queue | AWS SQS | Xử lý bất đồng bộ giữa TripService và DriverService |
+| Cloud Sim | LocalStack | Giả lập môi trường AWS SQS dưới local |
 
 ---
 
-### 🚗 Driver Service (http://localhost:8082/api)
-| Method | Endpoint | Mô tả |
-|--------|-----------|-------|
-| PUT | `/drivers/:id/location` | Cập nhật vị trí (lat,lng) |
-| GET | `/drivers/search` | Tìm tài xế gần nhất |
-| PUT | `/drivers/:id/status` | Cập nhật trạng thái online/offline |
-| POST | `/drivers/:id/trips/:tripId/accept` | Chấp nhận chuyến |
-| POST | `/drivers/:id/trips/:tripId/reject` | Từ chối chuyến |
-
----
-
-## 🧪 5. Quy trình kiểm thử nhanh
-
-1. **Đăng ký & đăng nhập passenger**
-   ```bash
-   curl -X POST http://localhost:8081/api/users      -H "Content-Type: application/json"      -d '{"email":"passenger@example.com","password":"123456","role":"passenger"}'
-   ```
-   → lưu `token` trả về.
-
-2. **Đăng ký & đăng nhập driver** tương tự với `"role":"driver"`.
-
-3. **Driver bật online + cập nhật vị trí**
-   ```bash
-   curl -X PUT http://localhost:8082/api/drivers/1/status      -H "Authorization: Bearer <JWT_DRIVER>"      -H "Content-Type: application/json"      -d '{"status":"online"}'
-
-   curl -X PUT http://localhost:8082/api/drivers/1/location      -H "Authorization: Bearer <JWT_DRIVER>"      -H "Content-Type: application/json"      -d '{"lat":10.87,"lng":106.8}'
-   ```
-
-4. **Passenger tạo chuyến**
-   ```bash
-   curl -X POST http://localhost:8083/api/trips      -H "Authorization: Bearer <JWT_PASSENGER>"      -H "Content-Type: application/json"      -d '{"passengerId":1,"pickup":"UIT","destination":"Ben Thanh","pickupLat":10.87,"pickupLng":106.8}'
-   ```
-
-5. **Driver chấp nhận chuyến**
-   ```bash
-   curl -X POST http://localhost:8082/api/drivers/1/trips/1/accept      -H "Authorization: Bearer <JWT_DRIVER>"
-   ```
-
-6. **Passenger hoàn thành & đánh giá chuyến**
-   ```bash
-   curl -X POST http://localhost:8083/api/trips/1/complete      -H "Authorization: Bearer <JWT_PASSENGER>"
-   curl -X POST http://localhost:8083/api/trips/1/review      -H "Authorization: Bearer <JWT_PASSENGER>"      -H "Content-Type: application/json"      -d '{"rating":5,"comment":"Good driver!"}'
-   ```
-
----
-
-## 🧰 6. Stack sử dụng
-
-| Thành phần | Công nghệ |
-|-------------|------------|
-| Runtime | Node.js (Express) |
-| Database | PostgreSQL |
-| Cache / GeoIndex | Redis (ioredis) |
-| Authentication | JWT |
-| Container | Docker + Docker Compose |
-| Communication | REST (Axios) |
-| Realtime | Socket.IO (DriverService) |
-
----
-
-## 🧹 7. Dừng & dọn dữ liệu
-
-```bash
-docker compose down -v
-```
-Thêm `-v` để xóa dữ liệu database và cache Redis.
-
----
-
-## ☁️ 8. Triển khai trên AWS
-
-### 8.1 Yêu cầu
-
-- AWS CLI đã cấu hình (`aws configure`)
-- Terraform ≥ 1.0
-- Tài khoản AWS với quyền tạo VPC, RDS, SQS, Lambda, API Gateway
-
-### 8.2 Kiến trúc AWS
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                         AWS ARCHITECTURE                         │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                  │
-│  ┌──────────────┐     ┌──────────────┐     ┌──────────────┐     │
-│  │  API Gateway │────▶│   AWS SQS    │────▶│ AWS Lambda   │     │
-│  │  (REST API)  │     │  (Queue)     │     │ (Consumer)   │     │
-│  └──────────────┘     └──────────────┘     └──────┬───────┘     │
-│                                                   │              │
-│  ┌──────────────────────────────────────────────┐│              │
-│  │                    VPC                        ││              │
-│  │  ┌────────────────┐  ┌────────────────┐      ││              │
-│  │  │ Public Subnet  │  │ Private Subnet │      ││              │
-│  │  │                │  │                │      ▼│              │
-│  │  │  ┌──────────┐  │  │  ┌──────────┐  │  ┌────────┐         │
-│  │  │  │   EC2    │  │  │  │   RDS    │  │  │PostgreSQL│        │
-│  │  │  │(Services)│  │  │  │(Postgres)│◀─┼──│(History)│         │
-│  │  │  └──────────┘  │  │  └──────────┘  │  └────────┘         │
-│  │  └────────────────┘  └────────────────┘                      │
-│  └──────────────────────────────────────────────────────────────┘│
-└─────────────────────────────────────────────────────────────────┘
-```
-
-### 8.3 Triển khai với Terraform
-
-```bash
-# 1. Di chuyển vào thư mục terraform
-cd terraform
-
-# 2. Khởi tạo Terraform
-terraform init
-
-# 3. Xem trước các resources sẽ tạo
-terraform plan
-
-# 4. Triển khai lên AWS
-terraform apply
-
-# 5. Xem outputs (API endpoints, queue URLs...)
-terraform output
-```
-
-### 8.4 Cấu hình biến môi trường
-
-Tạo file `terraform/terraform.tfvars`:
-
-```hcl
-# AWS Region
-aws_region = "ap-southeast-1"
-
-# VPC Configuration
-vpc_cidr             = "10.0.0.0/16"
-public_subnet_cidrs  = ["10.0.1.0/24", "10.0.2.0/24"]
-private_subnet_cidrs = ["10.0.3.0/24", "10.0.4.0/24"]
-
-# RDS Configuration
-db_username       = "uitgo_admin"
-db_password       = "YourSecurePassword123!"
-db_instance_class = "db.t3.micro"
-
-# SQS Configuration
-sqs_queue_name = "location-history-queue"
-
-# API Gateway
-api_gateway_name = "uitgo-api"
-stage_name       = "prod"
-```
-
-### 8.5 Modules Terraform
-
-| Module | Mô tả |
-|--------|-------|
-| `modules/vpc` | VPC, Subnets, Internet Gateway, NAT Gateway |
-| `modules/security_group` | Security Groups cho RDS, EC2 |
-| `modules/rds` | PostgreSQL RDS instance |
-| `modules/sqs` | SQS Queue cho location history |
-| `modules/lambda_sqs_consumer` | Lambda function xử lý messages từ SQS |
-| `modules/api_gateway` | REST API Gateway |
-| `modules/iam` | IAM Roles và Policies |
-
-### 8.6 Dọn dẹp resources AWS
-
-```bash
-cd terraform
-terraform destroy
-```
-
-⚠️ **Lưu ý:** Sẽ xóa TẤT CẢ resources đã tạo trên AWS.
-
----
-
-## 📊 9. Load Testing
+## 📊 4. Load Testing
 
 ### 9.1 Cài đặt K6
 
@@ -400,7 +248,7 @@ Chi tiết: xem `modules/driver-service/load-tests/LOAD-TEST-REPORT.md`
 
 ---
 
-## 📚 10. Tài liệu
+## 📚 5. Tài liệu
 
 | File | Mô tả |
 |------|-------|
