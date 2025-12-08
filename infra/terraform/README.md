@@ -23,6 +23,44 @@ terraform/              # Code Terraform để deploy lên AWS
 
 ## Kiến trúc AWS
 
+```mermaid
+flowchart TB
+  subgraph Internet
+    Client[User / Mobile / Browser]
+  end
+
+  subgraph Edge
+    WAF[WAF]
+    ALB[ALB (Public)]
+  end
+
+  subgraph VPC [VPC (multi-AZ)]
+    subgraph Public[Public Subnets]
+      NAT[NAT GW]
+      ALB_internal[ALB (internal)?? optional]
+    end
+
+    subgraph PrivateApp[Private Subnets (app)]
+      ECS[ECS Fargate Cluster]
+      SQS[SQS Queue]
+      Redis[ElastiCache Redis Cluster]
+    end
+
+    subgraph PrivateData[Private Subnets (data)]
+      RDS[(RDS - PostgreSQL Multi-AZ)]
+      Secrets[Secrets Manager]
+    end
+  end
+
+  Client -->|HTTPS| WAF --> ALB --> ECS
+  ECS -->|DB connections| RDS
+  ECS -->|Cache| Redis
+  ECS -->|Async| SQS
+  ECS -->|Get secrets| Secrets
+  ECS -->|CloudWatch| CloudWatch[(Monitoring)]
+  NAT -->|egress| Internet
+```
+
 ## Hướng dẫn Deploy lên AWS
 
 ### Bước 1: Chuẩn bị 

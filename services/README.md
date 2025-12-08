@@ -68,6 +68,28 @@ Thư mục này chứa mã nguồn của các dịch vụ độc lập. Các d�
 
 ---
 
+### API Gateway (http://localhost:8080/api)
+| Method | Endpoint | Mô tả |
+|--------|-----------|-------|
+| POST | `/users/register` | Đăng ký tài khoản |
+| POST | `/users/login` | Đăng nhập, trả về access token |
+| GET | `/users/me` | Lấy thông tin profile |
+| PUT | `/drivers/:id/location` | Cập nhật vị trí của tài xế |
+| POST | `/drivers/:id/location/batch` | Cập nhật hàng loạt vị trí của tài xế |
+| GET | `/drivers/:id/location` | Lấy vị trí của một tài xế |
+| GET | `/drivers/search` | Tìm kiếm tài xế gần khu vực |
+| PUT | `/drivers/:id/status` | Cập nhật trạng thái tài xế |
+| GET | `/drivers/stats/location` | Thống kê vị trí tài xế |
+| POST | `/drivers/:id/trips/:tripId/accept` | Tài xế chấp nhận chuyến đi |
+| POST | `/drivers/:id/trips/:tripId/reject` | Tài xế từ chối chuyến đi |
+| POST | `/trips` | Tài xế từ chối chuyến đi |
+| GET | `/trips/:id` | Lấy chi tiết một chuyến đi |
+| POST | `/trips/:id/cancel` | Hủy chuyến đi |
+| POST | `/trips/:id/complete` | Hoàn thành chuyến đi |
+| POST | `/trips/:id/review` | Đánh giá và bình luận |
+
+---
+
 ## 4. Quy trình kiểm thử nhanh
 
 1. **Đăng ký & đăng nhập passenger**
